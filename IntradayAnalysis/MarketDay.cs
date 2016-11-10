@@ -83,7 +83,7 @@ namespace IntradayAnalysis
 			sb.Append("High:").Append(High.ToString()).Append(" ");
 			sb.Append("Low:").Append(Low.ToString()).Append(" ");
 			sb.Append("Volume:").Append(Volume.ToString()).Append(" ");
-			sb.Append("Gap:").Append(Gap.ToString());
+			sb.Append("Gap:").Append(Gap.ToString("f4"));
 
 			if (verbose)
 			{
@@ -106,7 +106,7 @@ namespace IntradayAnalysis
 			sb.Append(High.ToString()).Append(",");
 			sb.Append(Low.ToString()).Append(",");
 			sb.Append(Volume.ToString()).Append(",");
-			sb.Append(Gap.ToString());
+			sb.Append(Gap.ToString("f4"));
 
 			if (verbose)
 			{

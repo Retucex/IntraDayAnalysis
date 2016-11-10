@@ -60,5 +60,17 @@ namespace IntradayAnalysis
 		{
 			Volume = volume;
 		}
+
+		public static string OutputVolumeClasses()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine($"VeryLow: {veryLowVolume[0]}-{veryLowVolume[1]}");
+			sb.AppendLine($"Low: {lowVolume[0]}-{lowVolume[1]}");
+			sb.AppendLine($"Medium: {mediumVolume[0]}-{mediumVolume[1]}");
+			sb.AppendLine($"High: {highVolume[0]}-{highVolume[1]}");
+			sb.AppendLine($"VeryHigh: {veryHighVolume[0]}-{veryHighVolume[1]}");
+
+			return sb.ToString();
+		}
 	}
 }

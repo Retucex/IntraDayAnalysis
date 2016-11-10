@@ -15,7 +15,8 @@ namespace IntradayAnalysis
 			//MarketAnalysis.CreateGapFile();
 			MarketAnalysis.RunSimulation();
 
-			Console.ReadKey();
+			Console.WriteLine("Press a key to exit...");
+			//Console.ReadKey();
 		}
 	}
 }

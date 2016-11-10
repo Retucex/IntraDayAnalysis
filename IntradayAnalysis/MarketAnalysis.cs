@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace IntradayAnalysis
 {
+	using System.Diagnostics.Contracts;
+	using System.Xml.Schema;
+
 	static class MarketAnalysis
 	{
 		static double gapUpPercLow = 1.035;
@@ -20,6 +23,7 @@ namespace IntradayAnalysis
 
 		static StreamWriter logFile = new StreamWriter("log.txt");
 		static StreamWriter logFile2 = new StreamWriter("log2.txt");
+		static StreamWriter logFile3 = new StreamWriter($"log3-{DateTime.Now.ToFileTime()}.txt");
 
 		static void LC(string s = "", bool color = false, ConsoleColor fore = ConsoleColor.Gray, ConsoleColor back = ConsoleColor.Black)
 		{
@@ -28,7 +32,7 @@ namespace IntradayAnalysis
 				Console.ForegroundColor = fore;
 				Console.BackgroundColor = back;
 			}
-			Console.WriteLine(s);
+			//Console.WriteLine(s);
 			logFile.WriteLine(s);
 			if (color)
 			{
@@ -68,6 +72,364 @@ namespace IntradayAnalysis
 				LC($"END OF DAY {i}");
 				LC();
 			}
+
+			#region Classification Success/Failures
+			List<MarketGuess> Success = new List<MarketGuess>();
+			List<MarketGuess> Fail = new List<MarketGuess>();
+			List<MarketGuess> Uncertain = new List<MarketGuess>();
+			List<MarketGuess> BoundsSuccess = new List<MarketGuess>();
+			List<MarketGuess> BoundsFail = new List<MarketGuess>();
+			List<MarketGuess> Undefined = new List<MarketGuess>();
+
+			foreach (MarketGuess marketGuess in guesses)
+			{
+				if (marketGuess.MarketAction == MarketAction.undefined)
+				{
+					Undefined.Add(marketGuess);
+				}
+
+				else if (marketGuess.MarketAction == MarketAction.buy)
+				{
+					if (marketGuess.LongPoints.Count > marketGuess.ShortPoints.Count
+						&& marketGuess.HighestSellPercentage > marketGuess.LowestShortPercentage)
+					{
+						if (marketGuess.BoundsMarketAction == MarketAction.withinBounds)
+						{
+							Success.Add(marketGuess);
+						}
+						else
+						{
+							BoundsFail.Add(marketGuess);
+						}
+					}
+					else if (marketGuess.LongPoints.Count < marketGuess.ShortPoints.Count
+							&& marketGuess.HighestSellPercentage < marketGuess.LowestShortPercentage)
+					{
+						if (marketGuess.BoundsMarketAction == MarketAction.withinBounds)
+						{
+							Fail.Add(marketGuess);
+						}
+						else
+						{
+							BoundsSuccess.Add(marketGuess);
+						}
+					}
+					else
+					{
+						Uncertain.Add(marketGuess);
+					}
+				}
+
+				else if (marketGuess.MarketAction == MarketAction.shrt)
+				{
+					if (marketGuess.LongPoints.Count < marketGuess.ShortPoints.Count
+						&& marketGuess.HighestSellPercentage < marketGuess.LowestShortPercentage)
+					{
+						if (marketGuess.BoundsMarketAction == MarketAction.withinBounds)
+						{
+							Success.Add(marketGuess);
+						}
+						else
+						{
+							BoundsFail.Add(marketGuess);
+						}
+					}
+					else if (marketGuess.LongPoints.Count > marketGuess.ShortPoints.Count
+							&& marketGuess.HighestSellPercentage > marketGuess.LowestShortPercentage)
+					{
+						if (marketGuess.BoundsMarketAction == MarketAction.withinBounds)
+						{
+							Fail.Add(marketGuess);
+						}
+						else
+						{
+							BoundsSuccess.Add(marketGuess);
+						}
+					}
+					else
+					{
+						Uncertain.Add(marketGuess);
+					}
+				}
+
+				else if (marketGuess.MarketAction == MarketAction.doNotTouch)
+				{
+					if (Math.Abs(marketGuess.BuyPrice) < 0.001)
+					{
+						Success.Add(marketGuess);
+					}
+					else if (marketGuess.ShortPoints.Count < 5 && marketGuess.LongPoints.Count < 5)
+					{
+						Success.Add(marketGuess);
+					}
+					else if (marketGuess.ShortPoints.Count > 10 || marketGuess.LongPoints.Count > 10)
+					{
+						Fail.Add(marketGuess);
+					}
+					else
+					{
+						Uncertain.Add(marketGuess);
+					}
+				}
+			}
+			#endregion
+
+			#region Action Breakdown
+			List<Dictionary<MarketAction, List<MarketGuess>>> BreakDownActions = new List<Dictionary<MarketAction, List<MarketGuess>>>();
+
+			Dictionary<MarketAction, List<MarketGuess>> SuccessAction = new Dictionary<MarketAction, List<MarketGuess>>();
+			Dictionary<MarketAction, List<MarketGuess>> FailAction = new Dictionary<MarketAction, List<MarketGuess>>();
+			Dictionary<MarketAction, List<MarketGuess>> UncertainAction = new Dictionary<MarketAction, List<MarketGuess>>();
+			Dictionary<MarketAction, List<MarketGuess>> BoundsSuccessAction = new Dictionary<MarketAction, List<MarketGuess>>();
+			Dictionary<MarketAction, List<MarketGuess>> BoundsFailAction = new Dictionary<MarketAction, List<MarketGuess>>();
+			Dictionary<MarketAction, List<MarketGuess>> UndefinedAction = new Dictionary<MarketAction, List<MarketGuess>>();
+
+			List<MarketGuess> buy = new List<MarketGuess>();
+			List<MarketGuess> shrt = new List<MarketGuess>();
+			List<MarketGuess> noTouch = new List<MarketGuess>();
+			List<MarketGuess> undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in Success)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			SuccessAction.Add(MarketAction.buy, buy);
+			SuccessAction.Add(MarketAction.shrt, shrt);
+			SuccessAction.Add(MarketAction.doNotTouch, noTouch);
+			SuccessAction.Add(MarketAction.undefined, undefined);
+
+			buy = new List<MarketGuess>();
+			shrt = new List<MarketGuess>();
+			noTouch = new List<MarketGuess>();
+			undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in Fail)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			FailAction.Add(MarketAction.buy, buy);
+			FailAction.Add(MarketAction.shrt, shrt);
+			FailAction.Add(MarketAction.doNotTouch, noTouch);
+			FailAction.Add(MarketAction.undefined, undefined);
+
+			buy = new List<MarketGuess>();
+			shrt = new List<MarketGuess>();
+			noTouch = new List<MarketGuess>();
+			undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in Uncertain)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			UncertainAction.Add(MarketAction.buy, buy);
+			UncertainAction.Add(MarketAction.shrt, shrt);
+			UncertainAction.Add(MarketAction.doNotTouch, noTouch);
+			UncertainAction.Add(MarketAction.undefined, undefined);
+
+			buy = new List<MarketGuess>();
+			shrt = new List<MarketGuess>();
+			noTouch = new List<MarketGuess>();
+			undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in BoundsSuccess)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			BoundsSuccessAction.Add(MarketAction.buy, buy);
+			BoundsSuccessAction.Add(MarketAction.shrt, shrt);
+			BoundsSuccessAction.Add(MarketAction.doNotTouch, noTouch);
+			BoundsSuccessAction.Add(MarketAction.undefined, undefined);
+
+			buy = new List<MarketGuess>();
+			shrt = new List<MarketGuess>();
+			noTouch = new List<MarketGuess>();
+			undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in BoundsFail)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			BoundsFailAction.Add(MarketAction.buy, buy);
+			BoundsFailAction.Add(MarketAction.shrt, shrt);
+			BoundsFailAction.Add(MarketAction.doNotTouch, noTouch);
+			BoundsFailAction.Add(MarketAction.undefined, undefined);
+
+			buy = new List<MarketGuess>();
+			shrt = new List<MarketGuess>();
+			noTouch = new List<MarketGuess>();
+			undefined = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in Undefined)
+			{
+				switch (marketGuess.MarketAction)
+				{
+					case MarketAction.buy:
+						buy.Add(marketGuess);
+						break;
+
+					case MarketAction.shrt:
+						shrt.Add(marketGuess);
+						break;
+
+					case MarketAction.doNotTouch:
+						noTouch.Add(marketGuess);
+						break;
+
+					case MarketAction.undefined:
+						undefined.Add(marketGuess);
+						break;
+				}
+			}
+			UndefinedAction.Add(MarketAction.buy, buy);
+			UndefinedAction.Add(MarketAction.shrt, shrt);
+			UndefinedAction.Add(MarketAction.doNotTouch, noTouch);
+			UndefinedAction.Add(MarketAction.undefined, undefined);
+
+			BreakDownActions.Add(SuccessAction);
+			BreakDownActions.Add(FailAction);
+			BreakDownActions.Add(BoundsSuccessAction);
+			BreakDownActions.Add(BoundsFailAction);
+			BreakDownActions.Add(UncertainAction);
+			BreakDownActions.Add(UndefinedAction);
+			#endregion
+
+			
+
+			logFile3.WriteLine($"Bounds margin:{MarketGuess.highLowBoundsPerc}");
+			logFile3.WriteLine($"Profit:{MarketGuess.profit}");
+			logFile3.WriteLine(MarketVolume.OutputVolumeClasses());
+
+			int totalClassified = Success.Count + Fail.Count + Uncertain.Count + BoundsSuccess.Count + BoundsFail.Count + Undefined.Count;
+			double successRate = (double)Success.Count / (Success.Count + Fail.Count);
+			double successBoundsRate = (double)(Success.Count + BoundsSuccess.Count) / (Success.Count + BoundsSuccess.Count + Fail.Count + BoundsFail.Count);
+
+			logFile3.WriteLine($"Success rate: {successRate}  {Success.Count}/{Success.Count + Fail.Count}");
+			logFile3.WriteLine($"Success rate with bounds: {successBoundsRate}  {Success.Count + BoundsSuccess.Count}/{Success.Count + BoundsSuccess.Count + Fail.Count + BoundsFail.Count}");
+			logFile3.WriteLine("---");
+			logFile3.WriteLine($"Guesses: {guesses.Count}");
+			logFile3.WriteLine($"Successes: {Success.Count}");
+			logFile3.WriteLine($"Failures: {Fail.Count}");
+			logFile3.WriteLine($"Uncertain: {Uncertain.Count}");
+			logFile3.WriteLine($"BoundsSuccess: {BoundsSuccess.Count}");
+			logFile3.WriteLine($"BoundsFail: {BoundsFail.Count}");
+			logFile3.WriteLine($"Undefined: {Undefined.Count}");
+			logFile3.WriteLine($"TotalClassified: {totalClassified}");
+			logFile3.WriteLine();
+
+			logFile3.WriteLine("---Success---");
+			foreach (MarketGuess marketGuess in Success)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
+
+			logFile3.WriteLine("---Fail---");
+			foreach (MarketGuess marketGuess in Fail)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
+
+			logFile3.WriteLine("---Uncertain---");
+			foreach (MarketGuess marketGuess in Uncertain)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
+
+			logFile3.WriteLine("---BoundsSuccess---");
+			foreach (MarketGuess marketGuess in BoundsSuccess)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
+
+			logFile3.WriteLine("---BoundsFail---");
+			foreach (MarketGuess marketGuess in BoundsFail)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
+
+			logFile3.WriteLine("---Undefined---");
+			foreach (MarketGuess marketGuess in Undefined)
+			{
+				logFile3.WriteLine(marketGuess);
+			}
 		}
 
 		static void SimulationLog(MarketGuess guess)
@@ -79,14 +441,13 @@ namespace IntradayAnalysis
 			Console.ForegroundColor = standardColor;
 
 			SetConsoleColorAction(guess);
-			string bounds = (guess.BoundsMarketAction == MarketAction.outOfBounds) ? "outOfBounds" : "";
 
 			LC(guess.MarketDay.ToStringNice(false));
 			LC(
-				$"||{guess.MarketAction} {bounds}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
 			logFile2.WriteLine(guess.MarketDay.ToStringNice(false));
 			logFile2.WriteLine(
-				$"||{guess.MarketAction} {bounds}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
 
 			Console.ForegroundColor = standardColor;
 
@@ -113,9 +474,9 @@ namespace IntradayAnalysis
 			{
 				logFile2.WriteLine($"\tbuyCount: {guess.LongPoints.Count} shortCount: {guess.ShortPoints.Count}");
 				logFile2.WriteLine(
-					$"\tHighest: {guess.HighestSellPoint.DateTime.TimeOfDay} High: {guess.HighestSellPoint.High} Percentage: {(guess.HighestSellPoint.High / guess.BuyPrice) - 1}");
+					$"\tHighest: {guess.HighestSellPoint.DateTime.TimeOfDay} High: {guess.HighestSellPoint.High} Percentage: {guess.HighestSellPercentage}");
 				logFile2.WriteLine(
-					$"\tLowest: {guess.LowestShortPoint.DateTime.TimeOfDay} Low: {guess.LowestShortPoint.Low} Percentage: {1 - (guess.LowestShortPoint.Low / guess.BuyPrice)}");
+					$"\tLowest: {guess.LowestShortPoint.DateTime.TimeOfDay} Low: {guess.LowestShortPoint.Low} Percentage: {guess.LowestShortPercentage}");
 				logFile2.WriteLine();
 
 				LC();

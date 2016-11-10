@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace IntradayAnalysis
 {
-	public enum MarketAction { buy, shrt, doNotTouch, undefined, outOfBounds }
+	public enum MarketAction { buy, shrt, doNotTouch, undefined, outOfBounds, withinBounds }
 	class MarketGuess
 	{
 		// Boundaries calculations
-		static double highLowBoundsPerc = 0.15;
+		public static double highLowBoundsPerc = 0.15;
 
 		// Profit Margin
-		static double profit = 0.005;
+		public static double profit = 0.01;
 
 		double localHigh;
 		double localLow;
@@ -76,6 +76,9 @@ namespace IntradayAnalysis
 					.First()
 			: null;
 
+		public double HighestSellPercentage => (HighestSellPoint?.High / BuyPrice) - 1 ?? -1;
+		public double LowestShortPercentage => 1 - (LowestShortPoint?.Low / BuyPrice) ?? -1;
+
 		public MarketGuess()
 		{
 			ShortPoints = new List<MarketDataPoint>();
@@ -91,7 +94,7 @@ namespace IntradayAnalysis
 			LocalDiff = 0;
 
 			MarketAction = MarketAction.undefined;
-			BoundsMarketAction = MarketAction.undefined;
+			BoundsMarketAction = MarketAction.withinBounds;
 		}
 
 		public void DetermineMarketAction()
@@ -108,7 +111,9 @@ namespace IntradayAnalysis
 			}
 
 			if (
+				(FirstVolume.VolumeClass == VolumeClass.veryLow && SecondVolume.VolumeClass == VolumeClass.medium) ||
 				(FirstVolume.VolumeClass == VolumeClass.low && SecondVolume.VolumeClass == VolumeClass.low) ||
+				(FirstVolume.VolumeClass == VolumeClass.low && SecondVolume.VolumeClass == VolumeClass.medium) ||
 				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.medium) ||
 				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.high) ||
 				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.veryHigh) ||
@@ -137,6 +142,17 @@ namespace IntradayAnalysis
 			{
 				BoundsMarketAction = MarketAction.outOfBounds;
 			}
+		}
+
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine(MarketDay.ToStringNice(false));
+			sb.AppendLine($"Action:{MarketAction} {BoundsMarketAction} Volumes:{FirstVolume.Volume}-{SecondVolume.Volume} {FirstVolume.VolumeClass}-{SecondVolume.VolumeClass} LowHigh:{LocalLow}-{LocalHigh} Bounds:{LocalLow+LocalDiff}-{LocalHigh-LocalDiff} BuyPrice:{BuyPrice}");
+			sb.AppendLine($"Long:{LongPoints.Count} Highest:{HighestSellPoint?.High ?? 0} at {HighestSellPoint?.DateTime.TimeOfDay ?? new TimeSpan(0)} {HighestSellPercentage.ToString("f4")}");
+			sb.AppendLine($"Short:{ShortPoints.Count} Lowest:{LowestShortPoint?.Low ?? 0} at {LowestShortPoint? .DateTime.TimeOfDay ?? new TimeSpan(0)} {LowestShortPercentage.ToString("f4")}");
+
+			return sb.ToString();
 		}
 	}
 }
