@@ -189,7 +189,7 @@ namespace IntradayAnalysis
 				}
 				if (volumes[i] >= highVolume[0] && volumes[i] <= highVolume[1])
 				{
-					volClasses[i] = VolumeClass.veryLow;
+					volClasses[i] = VolumeClass.high;
 				}
 				if (volumes[i] >= veryHighVolume[0] && volumes[i] <= veryHighVolume[1])
 				{
