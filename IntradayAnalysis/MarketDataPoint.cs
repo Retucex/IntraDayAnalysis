@@ -34,6 +34,20 @@ namespace IntradayAnalysis
 			Volume = volume;
 		}
 
+		public string ToStringNice()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append("Ticker:").Append(Ticker).Append(" ");
+			sb.Append("DateTime:").Append(DateTime).Append(" ");
+			sb.Append("Open:").Append(Open.ToString()).Append(" ");
+			sb.Append("Close:").Append(Close.ToString()).Append(" ");
+			sb.Append("High:").Append(High.ToString()).Append(" ");
+			sb.Append("Low:").Append(Low.ToString()).Append(" ");
+			sb.Append("Volume:").Append(Volume.ToString());
+
+			return sb.ToString();
+		}
+
 		public override string ToString()
 		{
 			StringBuilder sb = new StringBuilder();

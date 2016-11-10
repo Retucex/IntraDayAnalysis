@@ -73,6 +73,29 @@ namespace IntradayAnalysis
 			}
 		}
 
+		public string ToStringNice(bool verbose = true)
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append("Ticker:").Append(Ticker).Append(" ");
+			sb.Append("DateTime:").Append(DateTime).Append(" ");
+			sb.Append("Open:").Append(Open.ToString()).Append(" ");
+			sb.Append("Close:").Append(Close.ToString()).Append(" ");
+			sb.Append("High:").Append(High.ToString()).Append(" ");
+			sb.Append("Low:").Append(Low.ToString()).Append(" ");
+			sb.Append("Volume:").Append(Volume.ToString()).Append(" ");
+			sb.Append("Gap:").Append(Gap.ToString());
+
+			if (verbose)
+			{
+				sb.AppendLine();
+				foreach (var marketDataPoint in DataPoints)
+				{
+					sb.Append("\t").AppendLine(marketDataPoint.ToStringNice());
+				}
+			}
+			return sb.ToString();
+		}
+
 		public string ToStringVerbose(bool verbose = true)
 		{
 			StringBuilder sb = new StringBuilder();
