@@ -12,18 +12,6 @@ namespace IntradayAnalysis
 		static double gapUpPercLow = 1.035;
 		static double gapUpPercHigh = 1.145;
 
-		// Boundaries calculations
-		static double marginPerc = 0.15;
-
-		// Profit margins
-		static double profit = 0.005;
-
-		static int[] veryLowVolume = { 0, 999 };
-		static int[] lowVolume = { 1000, 3999 };
-		static int[] mediumVolume = { 4000, 34999 };
-		static int[] highVolume = { 35000, 124999 };
-		static int[] veryHighVolume = { 125000, 99999999 };
-
 		static ConsoleColor standardColor = ConsoleColor.Gray;
 		static ConsoleColor buyColor = ConsoleColor.Green;
 		static ConsoleColor shortColor = ConsoleColor.Red;
@@ -32,9 +20,6 @@ namespace IntradayAnalysis
 
 		static StreamWriter logFile = new StreamWriter("log.txt");
 		static StreamWriter logFile2 = new StreamWriter("log2.txt");
-
-		enum Action { buy, shrt, doNotTouch, undefined, outOfBounds }
-		enum VolumeClass { veryLow, low, medium, high, veryHigh }
 
 		static void LC(string s = "", bool color = false, ConsoleColor fore = ConsoleColor.Gray, ConsoleColor back = ConsoleColor.Black)
 		{
@@ -60,206 +45,167 @@ namespace IntradayAnalysis
 			DateTime lastDay = days[days.Count - 1].DateTime;
 			int daysSpanned = (lastDay - firstDay).Days;
 
+			List<MarketGuess> guesses = new List<MarketGuess>();
+
 			for (int i = 1; i <= daysSpanned; i++)
 			{
 				LC($"DAY {i}");
 				foreach (var marketDay in days.Where(x => x.DateTime == firstDay.AddDays(i)))
 				{
-					double localHigh = 0;
-					double localLow = double.MaxValue;
-					int firstVolume = 0;
-					int secondVolume = 0;
-					double buyPrice = 0;
-					double localDiff = 0;
+					MarketGuess guess = new MarketGuess { MarketDay = marketDay };
 
-					//From 9:30 to 10:10
-					foreach (var marketDataPoint in marketDay.DataPoints.Where(x => x.DateTime.TimeOfDay <= new TimeSpan(10, 10, 0)))
-					{
-                        firstVolume += marketDataPoint.Volume;
+					// Determine opening analysis
+					guess = OpeningAnalysis(guess);
+					guess.DetermineMarketAction();
 
-						if (marketDataPoint.High > localHigh)
-						{
-							localHigh = marketDataPoint.High;
-						}
-						if (marketDataPoint.Low < localLow)
-						{
-							localLow = marketDataPoint.Low;
-						}
-					}
+					// Determine points of 'going long' or shorthing
+					guess = LongShortSimulation(guess);
 
-					//From 10:10 to 10:30
-					foreach (var marketDataPoint in marketDay.DataPoints.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 10, 0) && x.DateTime.TimeOfDay <= new TimeSpan(10, 30, 0)))
-					{
-						secondVolume += marketDataPoint.Volume;
-					}
+					guesses.Add(guess);
 
-					firstVolume /= 40;
-					secondVolume /= 20;
-					buyPrice = marketDay.DataPoints?.FirstOrDefault(x => x.DateTime.TimeOfDay == new TimeSpan(10, 30, 0))?.Close ?? 0;
-					localDiff = (localHigh - localLow) * marginPerc;
-
-					Console.ForegroundColor = standardColor;
-					VolumeClass[] volClasses = new VolumeClass[2];
-					Action actionBounds;
-					Action action = BuyShortDontChoice(firstVolume, secondVolume, buyPrice, localDiff, localLow, localHigh, out volClasses, out actionBounds);
-					string bounds = (actionBounds == Action.outOfBounds) ? "outOfBounds" : "";
-					LC(marketDay.ToStringNice(false));
-					LC($"||{action} {bounds}||   1stVol: {firstVolume} {volClasses[0]} 2ndVol: {secondVolume} {volClasses[1]} Low&High: {localLow} - {localHigh} bounds: {localLow + localDiff} - {localHigh - localDiff} BuyPrice: {buyPrice}");
-					Console.ForegroundColor = standardColor;
-
-					logFile2.WriteLine(marketDay.ToStringNice(false));
-					logFile2.WriteLine($"||{action} {bounds}||   1stVol: {firstVolume} {volClasses[0]} 2ndVol: {secondVolume} {volClasses[1]} Low&High: {localLow} - {localHigh} bounds: {localLow + localDiff} - {localHigh - localDiff} BuyPrice: {buyPrice}");
-
-					double sellUpPrice = buyPrice * (1 + profit);
-					double sellDownPrice = buyPrice * (1 - profit);
-					bool first = true;
-					MarketDataPoint highest = new MarketDataPoint("", DateTime.Now, 0,0,0,0,0);
-					MarketDataPoint lowest = new MarketDataPoint("", DateTime.Now, 0,0,0,0,0);
-					int buyCount = 0;
-					int shortCount = 0;
-					foreach (MarketDataPoint marketDataPoint in marketDay.DataPoints.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 30, 0)))
-					{
-						if (first)
-						{
-							first = false;
-							highest = marketDataPoint;
-							lowest = marketDataPoint;
-						}
-
-						if (marketDataPoint.High > sellUpPrice)
-						{
-							buyCount++;
-							if (marketDataPoint.High > highest.High)
-							{
-								highest = marketDataPoint;
-							}
-							LC($"\t||buy||   Bought: {buyPrice} Sold: {sellUpPrice} At: {marketDataPoint.DateTime.TimeOfDay} High: {marketDataPoint.High} Percentage: {(marketDataPoint.High / buyPrice) - 1}", true, buyColor);
-						}
-
-						if (marketDataPoint.Low < sellDownPrice)
-						{
-							shortCount++;
-							if (marketDataPoint.Low < lowest.Low)
-							{
-								lowest = marketDataPoint;
-							}
-							LC($"\t||short||   Bought: {buyPrice} Sold: {sellDownPrice} At: {marketDataPoint.DateTime.TimeOfDay} Low: {marketDataPoint.Low} Percentage: {1 - (marketDataPoint.Low / buyPrice)}", true, shortColor);
-						}
-					}
-					logFile2.WriteLine($"\tbuyCount: {buyCount} shortCount: {shortCount}");
-					logFile2.WriteLine($"\tHighest: {highest.DateTime.TimeOfDay} High: {highest.High} Percentage: {(highest.High / buyPrice) - 1}");
-					logFile2.WriteLine($"\tLowest: {lowest.DateTime.TimeOfDay} Low: {lowest.Low} Percentage: {1 - (lowest.Low / buyPrice)}");
-					logFile2.WriteLine();
-
-					LC();
-					LC($"\tHighest: {highest.DateTime.TimeOfDay} High: {highest.High} Percentage: {(highest.High / buyPrice) - 1}", true, buyColor);
-					LC($"\tLowest: {lowest.DateTime.TimeOfDay} Low: {lowest.Low} Percentage: {1 - (lowest.Low / buyPrice)}", true, shortColor);
-					LC();
-					LC("\t---DETAILS---");
-					LC($"\t{marketDay.ToStringNice()}");
-					LC();
+					SimulationLog(guess);
 				}
 				LC($"END OF DAY {i}");
 				LC();
 			}
 		}
 
-		static Action BuyShortDontChoice(int firstVolume, int secondVolume, double price, double diff, double low, double high, out VolumeClass[] volClasses, out Action boundsAction)
+		static void SimulationLog(MarketGuess guess)
 		{
-			int[] volumes = new[] {firstVolume, secondVolume};
-			volClasses = new VolumeClass[2];
+			List<MarketDataPoint> LongShortList = new List<MarketDataPoint>();
+			LongShortList.AddRange(guess.LongPoints);
+			LongShortList.AddRange(guess.ShortPoints);
 
-			Action action = Action.undefined;
-			boundsAction = Action.undefined;
+			Console.ForegroundColor = standardColor;
 
-			// Set volume classes
-			for (int i = 0; i < 2; i++)
+			SetConsoleColorAction(guess);
+			string bounds = (guess.BoundsMarketAction == MarketAction.outOfBounds) ? "outOfBounds" : "";
+
+			LC(guess.MarketDay.ToStringNice(false));
+			LC(
+				$"||{guess.MarketAction} {bounds}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+			logFile2.WriteLine(guess.MarketDay.ToStringNice(false));
+			logFile2.WriteLine(
+				$"||{guess.MarketAction} {bounds}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+
+			Console.ForegroundColor = standardColor;
+
+			foreach (var point in LongShortList.OrderBy(x => x.DateTime))
 			{
-				if (volumes[i] >= veryLowVolume[0] && volumes[i] <= veryLowVolume[1])
+				if (point.High > guess.SellUpPrice)
 				{
-					volClasses[i] = VolumeClass.veryLow;
+					LC(
+						$"\t||buy||   Bought: {guess.BuyPrice} Sold: {guess.SellUpPrice} At: {point.DateTime.TimeOfDay} High: {point.High} Percentage: {(point.High / guess.BuyPrice) - 1}",
+						true,
+						buyColor);
 				}
-				if (volumes[i] >= lowVolume[0] && volumes[i] <= lowVolume[1])
+
+				if (point.Low < guess.SellDownPrice)
 				{
-					volClasses[i] = VolumeClass.low;
-				}
-				if (volumes[i] >= mediumVolume[0] && volumes[i] <= mediumVolume[1])
-				{
-					volClasses[i] = VolumeClass.medium;
-				}
-				if (volumes[i] >= highVolume[0] && volumes[i] <= highVolume[1])
-				{
-					volClasses[i] = VolumeClass.high;
-				}
-				if (volumes[i] >= veryHighVolume[0] && volumes[i] <= veryHighVolume[1])
-				{
-					volClasses[i] = VolumeClass.veryHigh;
+					LC(
+						$"\t||short||   Bought: {guess.BuyPrice} Sold: {guess.SellDownPrice} At: {point.DateTime.TimeOfDay} Low: {point.Low} Percentage: {1 - (point.Low / guess.BuyPrice)}",
+						true,
+						shortColor);
 				}
 			}
 
-			// Define action based on volume
-			if (
-				(volClasses[0] == VolumeClass.veryLow && volClasses[1] == VolumeClass.veryLow) ||
-				(volClasses[0] == VolumeClass.veryLow && volClasses[1] == VolumeClass.low) ||
-				(volClasses[0] == VolumeClass.low && volClasses[1] == VolumeClass.veryLow) ||
-				(volClasses[0] == VolumeClass.medium && volClasses[1] == VolumeClass.veryLow)
-				)
+			if (guess.HighestSellPoint != null)
 			{
-				action = Action.doNotTouch;
+				logFile2.WriteLine($"\tbuyCount: {guess.LongPoints.Count} shortCount: {guess.ShortPoints.Count}");
+				logFile2.WriteLine(
+					$"\tHighest: {guess.HighestSellPoint.DateTime.TimeOfDay} High: {guess.HighestSellPoint.High} Percentage: {(guess.HighestSellPoint.High / guess.BuyPrice) - 1}");
+				logFile2.WriteLine(
+					$"\tLowest: {guess.LowestShortPoint.DateTime.TimeOfDay} Low: {guess.LowestShortPoint.Low} Percentage: {1 - (guess.LowestShortPoint.Low / guess.BuyPrice)}");
+				logFile2.WriteLine();
+
+				LC();
+				LC(
+					$"\tHighest: {guess.HighestSellPoint.DateTime.TimeOfDay} High: {guess.HighestSellPoint.High} Percentage: {(guess.HighestSellPoint.High / guess.BuyPrice) - 1}",
+					true,
+					buyColor);
+				LC(
+					$"\tLowest: {guess.LowestShortPoint.DateTime.TimeOfDay} Low: {guess.LowestShortPoint.Low} Percentage: {1 - (guess.LowestShortPoint.Low / guess.BuyPrice)}",
+					true,
+					shortColor);
+				LC();
+				LC("\t---DETAILS---");
+				LC($"\t{guess.MarketDay.ToStringNice()}");
+			}
+			LC();
+		}
+
+		static MarketGuess LongShortSimulation(MarketGuess guess)
+		{
+			foreach (MarketDataPoint marketDataPoint in guess.MarketDay.DataPoints
+				.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 30, 0)))
+			{
+				if (marketDataPoint.High > guess.SellUpPrice)
+				{
+					guess.LongPoints.Add(marketDataPoint);
+				}
+				if (marketDataPoint.Low < guess.SellDownPrice)
+				{
+					guess.ShortPoints.Add(marketDataPoint);
+				}
 			}
 
-			if (
-				(volClasses[0] == VolumeClass.low && volClasses[1] == VolumeClass.low) ||
-				(volClasses[0] == VolumeClass.medium && volClasses[1] == VolumeClass.medium) ||
-				(volClasses[0] == VolumeClass.medium && volClasses[1] == VolumeClass.high) ||
-				(volClasses[0] == VolumeClass.medium && volClasses[1] == VolumeClass.veryHigh) ||
-				(volClasses[0] == VolumeClass.high && volClasses[1] == VolumeClass.medium) ||
-				(volClasses[0] == VolumeClass.high && volClasses[1] == VolumeClass.high) ||
-				(volClasses[0] == VolumeClass.high && volClasses[1] == VolumeClass.veryHigh) ||
-				(volClasses[0] == VolumeClass.veryHigh && volClasses[1] == VolumeClass.veryHigh) ||
-				(volClasses[0] == VolumeClass.veryHigh && volClasses[1] == VolumeClass.high) ||
-				(volClasses[0] == VolumeClass.veryHigh && volClasses[1] == VolumeClass.medium)
-				)
+			return guess;
+		}
+
+		static MarketGuess OpeningAnalysis(MarketGuess guess)
+		{
+			//From 9:30 to 10:10
+			foreach (var marketDataPoint in guess.MarketDay.DataPoints
+				.Where(x => x.DateTime.TimeOfDay <= new TimeSpan(10, 10, 0)))
 			{
-				action = Action.buy;
+				guess.FirstVolume.Volume += marketDataPoint.Volume;
+
+				if (marketDataPoint.High > guess.LocalHigh)
+				{
+					guess.LocalHigh = marketDataPoint.High;
+				}
+				if (marketDataPoint.Low < guess.LocalLow)
+				{
+					guess.LocalLow = marketDataPoint.Low;
+				}
 			}
 
-			if (
-				(volClasses[0] == VolumeClass.medium && volClasses[1] == VolumeClass.low) ||
-				(volClasses[0] == VolumeClass.high && volClasses[1] == VolumeClass.low)
-				)
+			//From 10:10 to 10:30
+			foreach (var marketDataPoint in guess.MarketDay.DataPoints
+					.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 10, 0) && x.DateTime.TimeOfDay <= new TimeSpan(10, 30, 0)))
 			{
-				action = Action.shrt;
+				guess.SecondVolume.Volume += marketDataPoint.Volume;
 			}
 
+			guess.FirstVolume.Volume /= 40;
+			guess.SecondVolume.Volume /= 20;
+			guess.BuyPrice = guess.MarketDay.DataPoints?
+				.FirstOrDefault(x => x.DateTime.TimeOfDay == new TimeSpan(10, 30, 0))?.Close ?? 0;
 
-			// Define action if price is not within bounds
-			if (!(price > low + diff && price < high - diff))
-			{
-				boundsAction = Action.outOfBounds;
-			}
+			return guess;
+		}
 
+		static void SetConsoleColorAction(MarketGuess guess)
+		{
 			// Set console color for pretty text
-			switch (action)
+			switch (guess.MarketAction)
 			{
-				case Action.buy:
+				case MarketAction.buy:
 					Console.ForegroundColor = buyColor;
 					break;
 
-				case Action.shrt:
+				case MarketAction.shrt:
 					Console.ForegroundColor = shortColor;
 					break;
 
-				case Action.doNotTouch:
+				case MarketAction.doNotTouch:
 					Console.ForegroundColor = dontColor;
 					break;
 
-				case Action.outOfBounds:
+				case MarketAction.outOfBounds:
 					Console.ForegroundColor = dontPriceColor;
 					break;
 			}
-
-			return action;
 		}
 		static List<MarketDay> ExtractSimulationData()
 		{

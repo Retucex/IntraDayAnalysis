@@ -46,6 +46,8 @@
     <Compile Include="MarketAnalysis.cs" />
     <Compile Include="MarketDataPoint.cs" />
     <Compile Include="MarketDay.cs" />
+    <Compile Include="MarketGuess.cs" />
+    <Compile Include="MarketVolume.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
