@@ -414,6 +414,15 @@ namespace IntradayAnalysis
 					.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 10, 0) && x.DateTime.TimeOfDay <= new TimeSpan(10, 30, 0)))
 			{
 				guess.SecondVolume.Volume += marketDataPoint.Volume;
+
+				if (marketDataPoint.High > guess.LocalHigh)
+				{
+					guess.LocalHigh = marketDataPoint.High;
+				}
+				if (marketDataPoint.Low < guess.LocalLow)
+				{
+					guess.LocalLow = marketDataPoint.Low;
+				}
 			}
 
 			guess.FirstVolume.Volume /= 40;
