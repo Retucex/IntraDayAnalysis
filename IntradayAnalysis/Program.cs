@@ -16,7 +16,7 @@ namespace IntradayAnalysis
 			MarketAnalysis.RunSimulation();
 
 			Console.WriteLine("Press a key to exit...");
-			//Console.ReadKey();
+			Console.ReadKey();
 		}
 	}
 }

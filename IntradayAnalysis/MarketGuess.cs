@@ -13,7 +13,7 @@ namespace IntradayAnalysis
 		public static double highLowBoundsPerc = 0.15;
 
 		// Profit Margin
-		public static double profit = 0.01;
+		public static double profit = 0.005;
 
 		double localHigh;
 		double localLow;

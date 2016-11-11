@@ -73,6 +73,7 @@ namespace IntradayAnalysis
 				LC();
 			}
 
+			Dictionary<string, List<MarketGuess>> SuccessFailures = new Dictionary<string, List<MarketGuess>>();
 			#region Classification Success/Failures
 			List<MarketGuess> Success = new List<MarketGuess>();
 			List<MarketGuess> Fail = new List<MarketGuess>();
@@ -172,263 +173,140 @@ namespace IntradayAnalysis
 					}
 				}
 			}
+
+			SuccessFailures.Add("Success", Success);
+			SuccessFailures.Add("Fail", Fail);
+			SuccessFailures.Add("Uncertain", Uncertain);
+			SuccessFailures.Add("BoundsSuccess", BoundsSuccess);
+			SuccessFailures.Add("BoundsFail", BoundsFail);
+			SuccessFailures.Add("Undefined", Undefined);
 			#endregion
 
+			Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>> BreakDownActions = new Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>>();
 			#region Action Breakdown
-			List<Dictionary<MarketAction, List<MarketGuess>>> BreakDownActions = new List<Dictionary<MarketAction, List<MarketGuess>>>();
-
-			Dictionary<MarketAction, List<MarketGuess>> SuccessAction = new Dictionary<MarketAction, List<MarketGuess>>();
-			Dictionary<MarketAction, List<MarketGuess>> FailAction = new Dictionary<MarketAction, List<MarketGuess>>();
-			Dictionary<MarketAction, List<MarketGuess>> UncertainAction = new Dictionary<MarketAction, List<MarketGuess>>();
-			Dictionary<MarketAction, List<MarketGuess>> BoundsSuccessAction = new Dictionary<MarketAction, List<MarketGuess>>();
-			Dictionary<MarketAction, List<MarketGuess>> BoundsFailAction = new Dictionary<MarketAction, List<MarketGuess>>();
-			Dictionary<MarketAction, List<MarketGuess>> UndefinedAction = new Dictionary<MarketAction, List<MarketGuess>>();
-
-			List<MarketGuess> buy = new List<MarketGuess>();
-			List<MarketGuess> shrt = new List<MarketGuess>();
-			List<MarketGuess> noTouch = new List<MarketGuess>();
-			List<MarketGuess> undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in Success)
+			foreach (KeyValuePair<string, List<MarketGuess>> keyValuePair in SuccessFailures)
 			{
-				switch (marketGuess.MarketAction)
+				Dictionary<MarketAction, List<MarketGuess>> ActionDict = new Dictionary<MarketAction, List<MarketGuess>>();
+				List<MarketGuess> buy = new List<MarketGuess>();
+				List<MarketGuess> shrt = new List<MarketGuess>();
+				List<MarketGuess> noTouch = new List<MarketGuess>();
+				List<MarketGuess> undefined = new List<MarketGuess>();
+				List<MarketGuess> outOfBounds = new List<MarketGuess>();
+				List<MarketGuess> withinBounds = new List<MarketGuess>();
+				foreach (MarketGuess marketGuess in keyValuePair.Value)
 				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
+					switch (marketGuess.MarketAction)
+					{
+						case MarketAction.buy:
+							buy.Add(marketGuess);
+							break;
 
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
+						case MarketAction.shrt:
+							shrt.Add(marketGuess);
+							break;
 
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
+						case MarketAction.doNotTouch:
+							noTouch.Add(marketGuess);
+							break;
 
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
+						case MarketAction.undefined:
+							undefined.Add(marketGuess);
+							break;
+					}
+
+					switch (marketGuess.BoundsMarketAction)
+					{
+						case MarketAction.withinBounds:
+							withinBounds.Add(marketGuess);
+							break;
+
+						case MarketAction.outOfBounds:
+							outOfBounds.Add(marketGuess);
+							break;
+					}
 				}
-			}
-			SuccessAction.Add(MarketAction.buy, buy);
-			SuccessAction.Add(MarketAction.shrt, shrt);
-			SuccessAction.Add(MarketAction.doNotTouch, noTouch);
-			SuccessAction.Add(MarketAction.undefined, undefined);
+				ActionDict.Add(MarketAction.buy, buy);
+				ActionDict.Add(MarketAction.shrt, shrt);
+				ActionDict.Add(MarketAction.doNotTouch, noTouch);
+				ActionDict.Add(MarketAction.undefined, undefined);
+				ActionDict.Add(MarketAction.withinBounds, withinBounds);
+				ActionDict.Add(MarketAction.outOfBounds, outOfBounds);
 
-			buy = new List<MarketGuess>();
-			shrt = new List<MarketGuess>();
-			noTouch = new List<MarketGuess>();
-			undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in Fail)
-			{
-				switch (marketGuess.MarketAction)
-				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
-
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
-
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
-
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
-				}
-			}
-			FailAction.Add(MarketAction.buy, buy);
-			FailAction.Add(MarketAction.shrt, shrt);
-			FailAction.Add(MarketAction.doNotTouch, noTouch);
-			FailAction.Add(MarketAction.undefined, undefined);
-
-			buy = new List<MarketGuess>();
-			shrt = new List<MarketGuess>();
-			noTouch = new List<MarketGuess>();
-			undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in Uncertain)
-			{
-				switch (marketGuess.MarketAction)
-				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
-
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
-
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
-
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
-				}
-			}
-			UncertainAction.Add(MarketAction.buy, buy);
-			UncertainAction.Add(MarketAction.shrt, shrt);
-			UncertainAction.Add(MarketAction.doNotTouch, noTouch);
-			UncertainAction.Add(MarketAction.undefined, undefined);
-
-			buy = new List<MarketGuess>();
-			shrt = new List<MarketGuess>();
-			noTouch = new List<MarketGuess>();
-			undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in BoundsSuccess)
-			{
-				switch (marketGuess.MarketAction)
-				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
-
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
-
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
-
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
-				}
-			}
-			BoundsSuccessAction.Add(MarketAction.buy, buy);
-			BoundsSuccessAction.Add(MarketAction.shrt, shrt);
-			BoundsSuccessAction.Add(MarketAction.doNotTouch, noTouch);
-			BoundsSuccessAction.Add(MarketAction.undefined, undefined);
-
-			buy = new List<MarketGuess>();
-			shrt = new List<MarketGuess>();
-			noTouch = new List<MarketGuess>();
-			undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in BoundsFail)
-			{
-				switch (marketGuess.MarketAction)
-				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
-
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
-
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
-
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
-				}
-			}
-			BoundsFailAction.Add(MarketAction.buy, buy);
-			BoundsFailAction.Add(MarketAction.shrt, shrt);
-			BoundsFailAction.Add(MarketAction.doNotTouch, noTouch);
-			BoundsFailAction.Add(MarketAction.undefined, undefined);
-
-			buy = new List<MarketGuess>();
-			shrt = new List<MarketGuess>();
-			noTouch = new List<MarketGuess>();
-			undefined = new List<MarketGuess>();
-			foreach (MarketGuess marketGuess in Undefined)
-			{
-				switch (marketGuess.MarketAction)
-				{
-					case MarketAction.buy:
-						buy.Add(marketGuess);
-						break;
-
-					case MarketAction.shrt:
-						shrt.Add(marketGuess);
-						break;
-
-					case MarketAction.doNotTouch:
-						noTouch.Add(marketGuess);
-						break;
-
-					case MarketAction.undefined:
-						undefined.Add(marketGuess);
-						break;
-				}
-			}
-			UndefinedAction.Add(MarketAction.buy, buy);
-			UndefinedAction.Add(MarketAction.shrt, shrt);
-			UndefinedAction.Add(MarketAction.doNotTouch, noTouch);
-			UndefinedAction.Add(MarketAction.undefined, undefined);
-
-			BreakDownActions.Add(SuccessAction);
-			BreakDownActions.Add(FailAction);
-			BreakDownActions.Add(BoundsSuccessAction);
-			BreakDownActions.Add(BoundsFailAction);
-			BreakDownActions.Add(UncertainAction);
-			BreakDownActions.Add(UndefinedAction);
+				BreakDownActions.Add(keyValuePair.Key, ActionDict);
+			}			
 			#endregion
 
-			
-
-			logFile3.WriteLine($"Bounds margin:{MarketGuess.highLowBoundsPerc}");
-			logFile3.WriteLine($"Profit:{MarketGuess.profit}");
-			logFile3.WriteLine(MarketVolume.OutputVolumeClasses());
-
-			int totalClassified = Success.Count + Fail.Count + Uncertain.Count + BoundsSuccess.Count + BoundsFail.Count + Undefined.Count;
 			double successRate = (double)Success.Count / (Success.Count + Fail.Count);
 			double successBoundsRate = (double)(Success.Count + BoundsSuccess.Count) / (Success.Count + BoundsSuccess.Count + Fail.Count + BoundsFail.Count);
 
-			logFile3.WriteLine($"Success rate: {successRate}  {Success.Count}/{Success.Count + Fail.Count}");
-			logFile3.WriteLine($"Success rate with bounds: {successBoundsRate}  {Success.Count + BoundsSuccess.Count}/{Success.Count + BoundsSuccess.Count + Fail.Count + BoundsFail.Count}");
-			logFile3.WriteLine("---");
-			logFile3.WriteLine($"Guesses: {guesses.Count}");
-			logFile3.WriteLine($"Successes: {Success.Count}");
-			logFile3.WriteLine($"Failures: {Fail.Count}");
-			logFile3.WriteLine($"Uncertain: {Uncertain.Count}");
-			logFile3.WriteLine($"BoundsSuccess: {BoundsSuccess.Count}");
-			logFile3.WriteLine($"BoundsFail: {BoundsFail.Count}");
-			logFile3.WriteLine($"Undefined: {Undefined.Count}");
-			logFile3.WriteLine($"TotalClassified: {totalClassified}");
+			int totalBuy = 0;
+			int totalShort = 0;
+			int totalDoNotTouch = 0;
+			int totalUndefined = 0;
+			int totalWithinBounds = 0;
+			int totalOutOfBounds = 0;
+			foreach (KeyValuePair<string, Dictionary<MarketAction, List<MarketGuess>>> action in BreakDownActions)
+			{
+				foreach (KeyValuePair<MarketAction, List<MarketGuess>> keyValuePair in action.Value)
+				{
+					if (keyValuePair.Key == MarketAction.buy)
+						totalBuy += keyValuePair.Value.Count;
+					if (keyValuePair.Key == MarketAction.shrt)
+						totalShort += keyValuePair.Value.Count;
+					if (keyValuePair.Key == MarketAction.doNotTouch)
+						totalDoNotTouch += keyValuePair.Value.Count;
+					if (keyValuePair.Key == MarketAction.undefined)
+						totalUndefined += keyValuePair.Value.Count;
+					if (keyValuePair.Key == MarketAction.withinBounds)
+						totalWithinBounds += keyValuePair.Value.Count;
+					if (keyValuePair.Key == MarketAction.outOfBounds)
+						totalOutOfBounds += keyValuePair.Value.Count;
+				}
+			}
+
+			logFile3.WriteLine("---Parameters---");
+			logFile3.WriteLine($"Bounds margin:{MarketGuess.highLowBoundsPerc}");
+			logFile3.WriteLine($"Profit:{MarketGuess.profit}");
+			logFile3.WriteLine();
+			logFile3.WriteLine(MarketVolume.OutputVolumeClasses());
+			logFile3.WriteLine("------");
 			logFile3.WriteLine();
 
-			logFile3.WriteLine("---Success---");
-			foreach (MarketGuess marketGuess in Success)
+			logFile3.WriteLine($"Guesses: {guesses.Count}");
+			logFile3.WriteLine();
+			logFile3.WriteLine($"Successes: {Success.Count}\t{(double)Success.Count/guesses.Count}");
+			logFile3.WriteLine($"Failures: {Fail.Count}\t{(double)Fail.Count / guesses.Count}");
+			logFile3.WriteLine($"Uncertain: {Uncertain.Count}\t{(double)Uncertain.Count / guesses.Count}");
+			logFile3.WriteLine($"BoundsSuccess: {BoundsSuccess.Count}\t{(double)BoundsSuccess.Count / guesses.Count}");
+			logFile3.WriteLine($"BoundsFail: {BoundsFail.Count}\t{(double)BoundsFail.Count / guesses.Count}");
+			logFile3.WriteLine($"Undefined: {Undefined.Count}\t{(double)Undefined.Count / guesses.Count}");
+			logFile3.WriteLine();
+
+			logFile3.WriteLine($"Buy: {totalBuy}\t{(double)totalBuy / guesses.Count}");
+			logFile3.WriteLine($"Short: {totalShort}\t{(double)totalShort / guesses.Count}");
+			logFile3.WriteLine($"DoNotTouch: {totalDoNotTouch}\t{(double)totalDoNotTouch / guesses.Count}");
+			logFile3.WriteLine($"Undefined: {totalUndefined}\t{(double)totalUndefined / guesses.Count}");
+			logFile3.WriteLine($"WithinBounds: {totalWithinBounds}\t{(double)totalWithinBounds / guesses.Count}");
+			logFile3.WriteLine($"OutOfBounds: {totalOutOfBounds}\t{(double)totalOutOfBounds / guesses.Count}");
+			logFile3.WriteLine();
+
+			foreach (KeyValuePair<string, Dictionary<MarketAction, List<MarketGuess>>> breakDownAction in BreakDownActions)
 			{
-				logFile3.WriteLine(marketGuess);
+				logFile3.WriteLine($"{breakDownAction.Key}:");
+				foreach (KeyValuePair<MarketAction, List<MarketGuess>> keyValuePair in breakDownAction.Value)
+				{
+					logFile3.WriteLine($"{keyValuePair.Key} {keyValuePair.Value.Count}");
+				}
+				logFile3.WriteLine();
 			}
 
-			logFile3.WriteLine("---Fail---");
-			foreach (MarketGuess marketGuess in Fail)
+			foreach (KeyValuePair<string, List<MarketGuess>> keyValuePair in SuccessFailures)
 			{
-				logFile3.WriteLine(marketGuess);
-			}
-
-			logFile3.WriteLine("---Uncertain---");
-			foreach (MarketGuess marketGuess in Uncertain)
-			{
-				logFile3.WriteLine(marketGuess);
-			}
-
-			logFile3.WriteLine("---BoundsSuccess---");
-			foreach (MarketGuess marketGuess in BoundsSuccess)
-			{
-				logFile3.WriteLine(marketGuess);
-			}
-
-			logFile3.WriteLine("---BoundsFail---");
-			foreach (MarketGuess marketGuess in BoundsFail)
-			{
-				logFile3.WriteLine(marketGuess);
-			}
-
-			logFile3.WriteLine("---Undefined---");
-			foreach (MarketGuess marketGuess in Undefined)
-			{
-				logFile3.WriteLine(marketGuess);
+				logFile3.WriteLine($"---{keyValuePair.Key}---");
+				foreach (MarketGuess marketGuess in keyValuePair.Value)
+				{
+					logFile3.WriteLine(marketGuess);
+				}
 			}
 		}
 
