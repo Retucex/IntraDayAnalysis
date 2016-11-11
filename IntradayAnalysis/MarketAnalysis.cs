@@ -21,9 +21,15 @@ namespace IntradayAnalysis
 		static ConsoleColor dontColor = ConsoleColor.DarkGray;
 		static ConsoleColor dontPriceColor = ConsoleColor.Blue;
 
-		static StreamWriter logFile = new StreamWriter("log.txt");
-		static StreamWriter logFile2 = new StreamWriter("log2.txt");
-		static StreamWriter logFile3 = new StreamWriter($"log3-{DateTime.Now.ToFileTime()}.txt");
+		static StreamWriter logFile = new StreamWriter($"Logs//{DateTimeFileName}-Detailed.txt");
+		static StreamWriter logFile2 = new StreamWriter($"Logs//{DateTimeFileName}-Summary.txt");
+		static StreamWriter logFile3 = new StreamWriter($"Logs//{DateTimeFileName}-Accuracy.txt");
+		static StreamWriter logFile4 = new StreamWriter($"Logs//{DateTimeFileName}-WinningsLosses.txt");
+
+		static string DateTimeFileName
+			=>
+				$"{DateTime.Now.Year}{DateTime.Now.Month}{DateTime.Now.Day}{DateTime.Now.Hour}{DateTime.Now.Minute}{DateTime.Now.Second}"
+			;
 
 		static void LC(string s = "", bool color = false, ConsoleColor fore = ConsoleColor.Gray, ConsoleColor back = ConsoleColor.Black)
 		{
@@ -43,6 +49,11 @@ namespace IntradayAnalysis
 
 		public static void RunSimulation()
 		{
+			logFile.AutoFlush = true;
+			logFile2.AutoFlush = true;
+			logFile3.AutoFlush = true;
+			logFile4.AutoFlush = true;
+
 			List<MarketDay> days = ExtractSimulationData();
 
 			DateTime firstDay = days[0].DateTime;
@@ -73,8 +84,169 @@ namespace IntradayAnalysis
 				LC();
 			}
 
+			SimulationAccuracy(guesses);
+
+			List<MarketGuess> failedLong = new List<MarketGuess>();
+			List<MarketGuess> failedShort = new List<MarketGuess>();
+			List<MarketGuess> soldLong = new List<MarketGuess>();
+			List<MarketGuess> soldShort = new List<MarketGuess>();
+			foreach (MarketGuess marketGuess in guesses)
+			{
+				if (marketGuess.MarketAction == MarketAction.buy/*
+					&& marketGuess.BoundsMarketAction == MarketAction.withinBounds//*/
+					)
+				{
+					MarketDataPoint sellPoint = (marketGuess.LongPoints.Count > 0) ? marketGuess.LongPoints.OrderBy(x => x.DateTime).First() : null;
+					if (sellPoint == null)
+					{
+						failedLong.Add(marketGuess);
+					}
+					else
+					{
+						soldLong.Add(marketGuess);
+					}
+				}
+
+				if (marketGuess.MarketAction == MarketAction.shrt/*
+					&& marketGuess.BoundsMarketAction == MarketAction.withinBounds//*/
+					)
+				{
+					MarketDataPoint sellPoint = (marketGuess.ShortPoints.Count > 0) ? marketGuess.ShortPoints.OrderBy(x => x.DateTime).First() : null;
+					if (sellPoint == null)
+					{
+						failedShort.Add(marketGuess);
+					}
+					else
+					{
+						soldShort.Add(marketGuess);
+					}
+				}
+			}
+
+			int totalLongShort = soldLong.Count + soldShort.Count + failedLong.Count + failedShort.Count;
+			int realTotalLongShort = soldLong.Count + soldShort.Count + failedLong.Count + failedShort.Count;
+			int totalSold = soldLong.Count + soldShort.Count;
+			int totalFailed = failedLong.Count + failedShort.Count;
+
+			logFile4.WriteLine($"soldLong: {soldLong.Count}\t{(double)soldLong.Count / totalLongShort}");
+			logFile4.WriteLine($"soldShort: {soldShort.Count}\t{(double)soldShort.Count / totalLongShort}");
+			logFile4.WriteLine($"failedLong: {failedLong.Count}\t{(double)failedLong.Count / totalLongShort}");
+			logFile4.WriteLine($"failedShort: {failedShort.Count}\t{(double)failedShort.Count / totalLongShort}");
+			logFile4.WriteLine("---");
+			logFile4.WriteLine($"totalSold: {soldLong.Count + soldShort.Count}\t{(double)(soldLong.Count + soldShort.Count) / totalLongShort}");
+			logFile4.WriteLine($"totalFailed: {failedLong.Count + failedShort.Count}\t{(double)(failedLong.Count + failedShort.Count) / totalLongShort}");
+			logFile4.WriteLine("-----------");
+			logFile4.WriteLine();
+
+			logFile4.WriteLine("Failed Long:");
+			foreach (MarketGuess marketGuess in failedLong)
+			{
+				logFile4.WriteLine(marketGuess);
+			}
+			logFile4.WriteLine();
+
+			logFile4.WriteLine("Failed Short:");
+			foreach (MarketGuess marketGuess in failedShort)
+			{
+				logFile4.WriteLine(marketGuess);
+			}
+			logFile4.WriteLine();
+
+			firstDay = guesses[0].MarketDay.DateTime;
+			lastDay = guesses[guesses.Count - 1].MarketDay.DateTime;
+			daysSpanned = (lastDay - firstDay).Days;
+
+			double totalLongLoss = 0;
+			double totalShortLoss = 0;
+			int shortLossCount = 0;
+			int longLossCount = 0;
+
+			for (int i = 0; i <= daysSpanned; i++)
+			{
+				failedLong = new List<MarketGuess>();
+				failedShort = new List<MarketGuess>();
+				soldLong = new List<MarketGuess>();
+				soldShort = new List<MarketGuess>();
+
+				double longLoss = 0;
+				double shortLoss = 0;
+
+				logFile4.WriteLine($"DAY {i} -- {firstDay.AddDays(i).Date}");
+				logFile4.WriteLine("\tLosses:");
+				foreach (MarketGuess marketGuess in guesses.Where(x => x.MarketDay.DateTime == firstDay.AddDays(i)))
+				{
+					if (marketGuess.MarketAction == MarketAction.buy///*
+					&& marketGuess.BoundsMarketAction == MarketAction.withinBounds//*/
+					)
+					{
+						MarketDataPoint sellPoint = (marketGuess.LongPoints.Count > 0) ? marketGuess.LongPoints.OrderBy(x => x.DateTime).First() : null;
+						if (sellPoint == null)
+						{
+							failedLong.Add(marketGuess);
+							MarketDataPoint fail = marketGuess.MarketDay.DataPoints.First(x => x.DateTime.TimeOfDay == new TimeSpan(15, 55, 0));
+							longLoss += 1 - (fail.Close / marketGuess.BuyPrice);
+							longLossCount++;
+							logFile4.WriteLine($"\tLong: {1 - (fail.Close/marketGuess.BuyPrice)}");
+						}
+						else
+						{
+							soldLong.Add(marketGuess);
+						}
+					}
+
+					if (marketGuess.MarketAction == MarketAction.shrt///*
+					&& marketGuess.BoundsMarketAction == MarketAction.withinBounds//*/
+						)
+					{
+						MarketDataPoint sellPoint = (marketGuess.ShortPoints.Count > 0) ? marketGuess.ShortPoints.OrderBy(x => x.DateTime).First() : null;
+						if (sellPoint == null)
+						{
+							failedShort.Add(marketGuess);
+							MarketDataPoint fail = marketGuess.MarketDay.DataPoints.First(x => x.DateTime.TimeOfDay == new TimeSpan(15, 55, 0));
+							shortLoss += (fail.Close / marketGuess.BuyPrice) - 1;
+							shortLossCount++;
+							logFile4.WriteLine($"\tShort: {(fail.Close / marketGuess.BuyPrice) - 1}");
+						}
+						else
+						{
+							soldShort.Add(marketGuess);
+						}
+					}
+				}
+				logFile4.WriteLine("\t---");
+
+				totalLongShort = soldLong.Count + soldShort.Count + failedLong.Count + failedShort.Count;
+				totalLongLoss += longLoss;
+				totalShortLoss += shortLoss;
+
+				logFile4.WriteLine($"\tsoldLong: {soldLong.Count}\t{(double)soldLong.Count / totalLongShort}");
+				logFile4.WriteLine($"\tsoldShort: {soldShort.Count}\t{(double)soldShort.Count / totalLongShort}");
+				logFile4.WriteLine($"\tfailedLong: {failedLong.Count}\t{(double)failedLong.Count / totalLongShort}");
+				logFile4.WriteLine($"\tfailedShort: {failedShort.Count}\t{(double)failedShort.Count / totalLongShort}");
+				logFile4.WriteLine("\t---");
+				logFile4.WriteLine($"\ttotalSold: {soldLong.Count + soldShort.Count}\t{(double)(soldLong.Count + soldShort.Count) / totalLongShort}");
+				logFile4.WriteLine($"\ttotalFailed: {failedLong.Count + failedShort.Count}\t{(double)(failedLong.Count + failedShort.Count) / totalLongShort}");
+				logFile4.WriteLine("\t---");
+				logFile4.WriteLine($"\tLong loss avg: {longLoss/failedLong.Count}");
+				logFile4.WriteLine($"\tShort loss avg: {shortLoss/failedShort.Count}");
+				logFile4.WriteLine($"\tLoss avg: {(shortLoss+longLoss)/(failedShort.Count+failedLong.Count)}");
+				logFile4.WriteLine();
+			}
+
+			double lossAvg = (totalLongLoss + totalShortLoss) / (shortLossCount + longLossCount);
+			logFile4.WriteLine("-----------");
+			logFile4.WriteLine($"Long loss avg: {totalLongLoss / longLossCount}");
+			logFile4.WriteLine($"Short loss avg: {totalShortLoss / shortLossCount}");
+			logFile4.WriteLine($"Loss avg: {(totalLongLoss+totalShortLoss) / (shortLossCount+longLossCount)}");
+			logFile4.WriteLine($"Overall Profit: {(totalSold * MarketGuess.profit - totalFailed * lossAvg) / realTotalLongShort}");
+		}
+
+		static void SimulationAccuracy(List<MarketGuess> guesses)
+		{
 			Dictionary<string, List<MarketGuess>> SuccessFailures = new Dictionary<string, List<MarketGuess>>();
+
 			#region Classification Success/Failures
+
 			List<MarketGuess> Success = new List<MarketGuess>();
 			List<MarketGuess> Fail = new List<MarketGuess>();
 			List<MarketGuess> Uncertain = new List<MarketGuess>();
@@ -180,10 +352,14 @@ namespace IntradayAnalysis
 			SuccessFailures.Add("BoundsSuccess", BoundsSuccess);
 			SuccessFailures.Add("BoundsFail", BoundsFail);
 			SuccessFailures.Add("Undefined", Undefined);
+
 			#endregion
 
-			Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>> BreakDownActions = new Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>>();
+			Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>> BreakDownActions =
+				new Dictionary<string, Dictionary<MarketAction, List<MarketGuess>>>();
+
 			#region Action Breakdown
+
 			foreach (KeyValuePair<string, List<MarketGuess>> keyValuePair in SuccessFailures)
 			{
 				Dictionary<MarketAction, List<MarketGuess>> ActionDict = new Dictionary<MarketAction, List<MarketGuess>>();
@@ -233,11 +409,9 @@ namespace IntradayAnalysis
 				ActionDict.Add(MarketAction.outOfBounds, outOfBounds);
 
 				BreakDownActions.Add(keyValuePair.Key, ActionDict);
-			}			
-			#endregion
+			}
 
-			double successRate = (double)Success.Count / (Success.Count + Fail.Count);
-			double successBoundsRate = (double)(Success.Count + BoundsSuccess.Count) / (Success.Count + BoundsSuccess.Count + Fail.Count + BoundsFail.Count);
+			#endregion
 
 			int totalBuy = 0;
 			int totalShort = 0;
@@ -250,17 +424,29 @@ namespace IntradayAnalysis
 				foreach (KeyValuePair<MarketAction, List<MarketGuess>> keyValuePair in action.Value)
 				{
 					if (keyValuePair.Key == MarketAction.buy)
+					{
 						totalBuy += keyValuePair.Value.Count;
+					}
 					if (keyValuePair.Key == MarketAction.shrt)
+					{
 						totalShort += keyValuePair.Value.Count;
+					}
 					if (keyValuePair.Key == MarketAction.doNotTouch)
+					{
 						totalDoNotTouch += keyValuePair.Value.Count;
+					}
 					if (keyValuePair.Key == MarketAction.undefined)
+					{
 						totalUndefined += keyValuePair.Value.Count;
+					}
 					if (keyValuePair.Key == MarketAction.withinBounds)
+					{
 						totalWithinBounds += keyValuePair.Value.Count;
+					}
 					if (keyValuePair.Key == MarketAction.outOfBounds)
+					{
 						totalOutOfBounds += keyValuePair.Value.Count;
+					}
 				}
 			}
 
@@ -274,7 +460,7 @@ namespace IntradayAnalysis
 
 			logFile3.WriteLine($"Guesses: {guesses.Count}");
 			logFile3.WriteLine();
-			logFile3.WriteLine($"Successes: {Success.Count}\t{(double)Success.Count/guesses.Count}");
+			logFile3.WriteLine($"Successes: {Success.Count}\t{(double)Success.Count / guesses.Count}");
 			logFile3.WriteLine($"Failures: {Fail.Count}\t{(double)Fail.Count / guesses.Count}");
 			logFile3.WriteLine($"Uncertain: {Uncertain.Count}\t{(double)Uncertain.Count / guesses.Count}");
 			logFile3.WriteLine($"BoundsSuccess: {BoundsSuccess.Count}\t{(double)BoundsSuccess.Count / guesses.Count}");
@@ -547,6 +733,7 @@ namespace IntradayAnalysis
 			Console.WriteLine(" Done.");
 
 			var output = new StreamWriter("output.txt");
+			output.AutoFlush = true;
 			foreach (var gappedDay in gappedDays)
 			{
 				output.WriteLine(gappedDay.ToStringVerbose());

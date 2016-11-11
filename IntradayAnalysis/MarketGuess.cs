@@ -10,7 +10,7 @@ namespace IntradayAnalysis
 	class MarketGuess
 	{
 		// Boundaries calculations
-		public static double highLowBoundsPerc = 0.0;
+		public static double highLowBoundsPerc = 0.01;
 
 		// Profit Margin
 		public static double profit = 0.005;
