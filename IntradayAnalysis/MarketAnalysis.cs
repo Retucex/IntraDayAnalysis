@@ -10,7 +10,7 @@ namespace IntradayAnalysis
 	using System.Diagnostics.Contracts;
 	using System.Xml.Schema;
 
-	static class MarketAnalysis
+	public static class MarketAnalysis
 	{
 		//static double gapUpPercLow = 1.035;
 		//static double gapUpPercHigh = 1.145;
@@ -50,7 +50,23 @@ namespace IntradayAnalysis
 			}
 		}
 
-		public static void RunSimulation()
+		public static void CreateCSV(List<MarketGuess> guesses)
+		{
+			StreamWriter logCSV= new StreamWriter($"Logs//{DateTimeFileName}-GapUp.csv");
+			logCSV.AutoFlush = true;
+
+			logCSV.WriteLine("Ticker,DateTime,Open,Close,High,Low,Volume");
+			foreach (MarketGuess marketGuess in guesses)
+			{
+				foreach (MarketDataPoint marketDataPoint in marketGuess.MarketDay.DataPoints)
+				{
+					logCSV.WriteLine(marketDataPoint);
+				}
+			}
+			logCSV.Close();
+		}
+
+		public static List<MarketGuess> RunSimulation()
 		{
 			logDetailed.AutoFlush = true;
 			logSummary.AutoFlush = true;
@@ -91,6 +107,9 @@ namespace IntradayAnalysis
 			SimulationAccuracy(guesses);
 			List<DaySummary> summaries = WinningsLosses(guesses);
 			VolumeClassification(summaries);
+			CreateCSV(guesses);
+
+			return guesses;
 		}
 
 		static void VolumeClassification(List<DaySummary> summaries)
@@ -530,10 +549,10 @@ namespace IntradayAnalysis
 
 			LC(guess.MarketDay.ToStringNice(false));
 			LC(
-				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LowBound} - {guess.HighBound} BuyPrice: {guess.BuyPrice}");
 			logSummary.WriteLine(guess.MarketDay.ToStringNice(false));
 			logSummary.WriteLine(
-				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LocalLow + guess.LocalDiff} - {guess.LocalHigh - guess.LocalDiff} BuyPrice: {guess.BuyPrice}");
+				$"||{guess.MarketAction} {guess.BoundsMarketAction}||   1stVol: {guess.FirstVolume.Volume} {guess.FirstVolume.VolumeClass} 2ndVol: {guess.SecondVolume.Volume} {guess.SecondVolume.VolumeClass} Low&High: {guess.LocalLow} - {guess.LocalHigh} bounds: {guess.LowBound} - {guess.HighBound} BuyPrice: {guess.BuyPrice}");
 
 			Console.ForegroundColor = standardColor;
 
@@ -663,7 +682,7 @@ namespace IntradayAnalysis
 					break;
 			}
 		}
-		static List<MarketDay> ExtractSimulationData()
+		public static List<MarketDay> ExtractSimulationData()
 		{
 			var file = File.ReadLines("output.txt");
 

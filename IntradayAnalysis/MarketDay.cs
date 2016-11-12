@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace IntradayAnalysis
 {
-	class MarketDay
+	public class MarketDay
 	{
 		public List<MarketDataPoint> DataPoints { get; private set; }
 

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace IntradayAnalysis
 {
 	public enum VolumeClass { veryLow, low, medium, high, veryHigh }
-	class MarketVolume
+	public class MarketVolume
 	{
 		static readonly int[] veryLowVolume = { 0, 999 };
 		static readonly int[] lowVolume = { 1000, 4999 };
