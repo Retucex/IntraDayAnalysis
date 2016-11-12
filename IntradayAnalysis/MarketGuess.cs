@@ -57,6 +57,8 @@ namespace IntradayAnalysis
 		public double BuyPrice { get; set; }
 		public double LocalDiff { get; private set; }
 
+		public double Profit { get; set; }
+
 		public double SellUpPrice => BuyPrice * (1 + profit);
 		public double SellDownPrice => BuyPrice * (1 - profit);
 
@@ -76,8 +78,22 @@ namespace IntradayAnalysis
 					.First()
 			: null;
 
+		public MarketDataPoint FirstSellPoint
+			=>
+			(LongPoints.Count > 0) ?
+				LongPoints.OrderBy(x => x.DateTime).First()
+		: null;
+
+		public MarketDataPoint FirstShortPoint
+			=>
+			(ShortPoints.Count > 0) ?
+				ShortPoints.OrderBy(x => x.DateTime).First()
+		: null;
+
 		public double HighestSellPercentage => (HighestSellPoint?.High / BuyPrice) - 1 ?? -1;
 		public double LowestShortPercentage => 1 - (LowestShortPoint?.Low / BuyPrice) ?? -1;
+
+		public double VolumeChange => (double)(SecondVolume.Volume - FirstVolume.Volume) / FirstVolume.Volume;
 
 		public MarketGuess()
 		{
@@ -104,13 +120,14 @@ namespace IntradayAnalysis
 				(FirstVolume.VolumeClass == VolumeClass.veryLow && SecondVolume.VolumeClass == VolumeClass.veryLow) ||
 				(FirstVolume.VolumeClass == VolumeClass.veryLow && SecondVolume.VolumeClass == VolumeClass.low) ||
 				(FirstVolume.VolumeClass == VolumeClass.low && SecondVolume.VolumeClass == VolumeClass.veryLow) ||
-				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.veryLow)
+				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.veryLow) ||
+				Math.Abs(BuyPrice) < 0.001
 				)
 			{
 				MarketAction = MarketAction.doNotTouch;
 			}
 
-			if (
+			else if (
 				(FirstVolume.VolumeClass == VolumeClass.veryLow && SecondVolume.VolumeClass == VolumeClass.medium) ||
 				(FirstVolume.VolumeClass == VolumeClass.low && SecondVolume.VolumeClass == VolumeClass.low) ||
 				(FirstVolume.VolumeClass == VolumeClass.low && SecondVolume.VolumeClass == VolumeClass.medium) ||
@@ -128,14 +145,13 @@ namespace IntradayAnalysis
 				MarketAction = MarketAction.buy;
 			}
 
-			if (
+			else if (
 				(FirstVolume.VolumeClass == VolumeClass.medium && SecondVolume.VolumeClass == VolumeClass.low) ||
 				(FirstVolume.VolumeClass == VolumeClass.high && SecondVolume.VolumeClass == VolumeClass.low)
 				)
 			{
 				MarketAction = MarketAction.shrt;
 			}
-
 
 			// Define action if price is not within bounds
 			if (!(BuyPrice > LocalLow + LocalDiff && BuyPrice < LocalHigh - LocalDiff))
@@ -148,11 +164,12 @@ namespace IntradayAnalysis
 		{
 			StringBuilder sb = new StringBuilder();
 			sb.AppendLine(MarketDay.ToStringNice(false));
-			sb.AppendLine($"Action:{MarketAction} {BoundsMarketAction} Volumes:{FirstVolume.Volume}-{SecondVolume.Volume} {FirstVolume.VolumeClass}-{SecondVolume.VolumeClass} LowHigh:{LocalLow}-{LocalHigh} Bounds:{LocalLow+LocalDiff}-{LocalHigh-LocalDiff} BuyPrice:{BuyPrice}");
+			sb.AppendLine($"Action:{MarketAction} {BoundsMarketAction} Volumes:{FirstVolume.Volume}-{SecondVolume.Volume} {FirstVolume.VolumeClass}-{SecondVolume.VolumeClass} VolumeChange:{VolumeChange} LowHigh:{LocalLow}-{LocalHigh} Bounds:{LocalLow+LocalDiff}-{LocalHigh-LocalDiff} BuyPrice:{BuyPrice}");
 			sb.AppendLine($"Long:{LongPoints.Count} Highest:{HighestSellPoint?.High ?? 0} at {HighestSellPoint?.DateTime.TimeOfDay ?? new TimeSpan(0)} {HighestSellPercentage.ToString("f4")}");
 			sb.AppendLine($"Short:{ShortPoints.Count} Lowest:{LowestShortPoint?.Low ?? 0} at {LowestShortPoint? .DateTime.TimeOfDay ?? new TimeSpan(0)} {LowestShortPercentage.ToString("f4")}");
 
 			return sb.ToString();
 		}
+
 	}
 }

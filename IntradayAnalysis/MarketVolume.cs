@@ -10,8 +10,8 @@ namespace IntradayAnalysis
 	class MarketVolume
 	{
 		static readonly int[] veryLowVolume = { 0, 999 };
-		static readonly int[] lowVolume = { 1000, 3999 };
-		static readonly int[] mediumVolume = { 4000, 34999 };
+		static readonly int[] lowVolume = { 1000, 4999 };
+		static readonly int[] mediumVolume = { 5000, 34999 };
 		static readonly int[] highVolume = { 35000, 124999 };
 		static readonly int[] veryHighVolume = { 125000, 99999999 };
 
