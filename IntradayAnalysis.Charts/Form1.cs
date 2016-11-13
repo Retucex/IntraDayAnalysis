@@ -13,12 +13,20 @@
 		{
 			InitializeComponent();
 
+			Console.WriteLine("Wait...");
 			List<MarketGuess> days = MarketAnalysis.RunSimulation();
+			Console.WriteLine("Leave empty for random stock or enter a ticker and date 'TICKER YYYY-MM-DD'");
+			Console.Write("Search:");
 			string search = Console.ReadLine();
+
+			Random rand = new Random();
+
 			MarketGuess day;
 			if (search == "")
 			{
-				day = days.FirstOrDefault(x => x.MarketDay.Ticker == "pfpt".ToUpper() && x.MarketDay.DateTime == DateTime.Parse("2016-10-21"));
+				var shortList = days.Where(x => x.MarketDay.DataPoints.Count > 20).ToList();
+				int index = rand.Next(0, shortList.Count);
+				day = shortList[index];
 			}
 			else
 			{
@@ -41,6 +49,8 @@
 
 			chart1.ChartAreas["PriceArea"].AxisY.Minimum = day.MarketDay.Low * 0.999;
 			chart1.ChartAreas["PriceArea"].AxisY.Maximum = day.MarketDay.High * 1.001;
+			chart1.ChartAreas["PriceArea"].AxisY2.Minimum = (day.MarketDay.Low / day.BuyPrice - 1);
+			chart1.ChartAreas["PriceArea"].AxisY2.Maximum = (day.MarketDay.High / day.BuyPrice - 1);
 			chart1.ChartAreas["PriceArea"].AxisX.Minimum = day.ToOA(9, 30);
 			chart1.ChartAreas["PriceArea"].AxisX.Maximum = day.ToOA(16, 10);
 			chart1.ChartAreas["VolumeArea"].AxisX.Minimum = day.ToOA(9, 30);
@@ -68,18 +78,10 @@
 			chart1.Series["GapLine"].Points.Add(new DataPoint(day.ToOA(9, 30), day.MarketDay.Open / day.MarketDay.Gap));
 			chart1.Series["GapLine"].Points.Add(new DataPoint(day.ToOA(16, 10), day.MarketDay.Open / day.MarketDay.Gap));
 
-			chart1.Series["LongProfit"].Points.Add(new DataPoint(day.ToOA(10, 30), new[] { chart1.ChartAreas["PriceArea"].AxisY.Maximum, day.BuyPrice * (1 + MarketGuess.profit) }));
-			chart1.Series["LongProfit"].Points.Add(new DataPoint(day.ToOA(16, 10), new[] { chart1.ChartAreas["PriceArea"].AxisY.Maximum, day.BuyPrice * (1 + MarketGuess.profit) }));
+			chart1.Series["ProfitMargin"].Points.Add(new DataPoint(day.ToOA(10, 30), new[] { day.BuyPrice * (1 - MarketGuess.profit), day.BuyPrice * (1 + MarketGuess.profit) }));
+			chart1.Series["ProfitMargin"].Points.Add(new DataPoint(day.ToOA(16, 10), new[] { day.BuyPrice * (1 - MarketGuess.profit), day.BuyPrice * (1 + MarketGuess.profit) }));
 
-			chart1.Series["ShortProfit"].Points.Add(new DataPoint(day.ToOA(10, 30), day.BuyPrice * (1 - MarketGuess.profit)));
-			chart1.Series["ShortProfit"].Points.Add(new DataPoint(day.ToOA(16, 10), day.BuyPrice * (1 - MarketGuess.profit)));
-
-			foreach (DataPoint dataPoint in chart1.Series["LongProfit"].Points)
-			{
-				dataPoint.Color = Color.FromArgb(40, dataPoint.Color);
-			}
-
-			foreach (DataPoint dataPoint in chart1.Series["ShortProfit"].Points)
+			foreach (DataPoint dataPoint in chart1.Series["ProfitMargin"].Points)
 			{
 				dataPoint.Color = Color.FromArgb(40, dataPoint.Color);
 			}

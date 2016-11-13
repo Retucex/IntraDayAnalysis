@@ -605,11 +605,11 @@ namespace IntradayAnalysis
 			foreach (MarketDataPoint marketDataPoint in guess.MarketDay.DataPoints
 				.Where(x => x.DateTime.TimeOfDay > new TimeSpan(10, 30, 0)))
 			{
-				if (marketDataPoint.High > guess.SellUpPrice)
+				if (marketDataPoint.High > guess.SellUpPrice || marketDataPoint.Low > guess.SellUpPrice || marketDataPoint.Open > guess.SellUpPrice || marketDataPoint.Close > guess.SellUpPrice)
 				{
 					guess.LongPoints.Add(marketDataPoint);
 				}
-				if (marketDataPoint.Low < guess.SellDownPrice)
+				if (marketDataPoint.High < guess.SellDownPrice || marketDataPoint.Low < guess.SellDownPrice || marketDataPoint.Open < guess.SellDownPrice || marketDataPoint.Close < guess.SellDownPrice)
 				{
 					guess.ShortPoints.Add(marketDataPoint);
 				}
