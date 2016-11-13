@@ -9,18 +9,30 @@
 
 	public partial class Form1 : Form
 	{
+		List<MarketGuess> days = MarketAnalysis.RunSimulation();
 		public Form1()
 		{
 			InitializeComponent();
 
 			Console.WriteLine("Wait...");
-			List<MarketGuess> days = MarketAnalysis.RunSimulation();
+			
 			Console.WriteLine("Leave empty for random stock or enter a ticker and date 'TICKER YYYY-MM-DD'");
 			Console.Write("Search:");
 			string search = Console.ReadLine();
 
-			Random rand = new Random();
+			
 
+			MarketGuess day = GetMarketGuess(search, days);
+
+			chart1.MouseMove += chart1_MouseMove;
+			tooltip.AutomaticDelay = 10;
+
+			PopulateChart(day);
+		}
+
+		static MarketGuess GetMarketGuess(string search, List<MarketGuess> days)
+		{
+			Random rand = new Random();
 			MarketGuess day;
 			if (search == "")
 			{
@@ -32,12 +44,15 @@
 			{
 				string[] splitSearch = search.Split(' ');
 
-				day = days.FirstOrDefault(x => x.MarketDay.Ticker == splitSearch[0].ToUpper() && x.MarketDay.DateTime == DateTime.Parse(splitSearch[1]));
+				day =
+					days.FirstOrDefault(
+						x => x.MarketDay.Ticker == splitSearch[0].ToUpper() && x.MarketDay.DateTime == DateTime.Parse(splitSearch[1]));
 			}
+			return day;
+		}
 
-			chart1.MouseMove += chart1_MouseMove;
-			tooltip.AutomaticDelay = 10;
-
+		void PopulateChart(MarketGuess day)
+		{
 			chart1.ChartAreas["VolumeArea"].AlignWithChartArea = "PriceArea";
 			chart1.ChartAreas["VolumeArea"].AlignmentOrientation = AreaAlignmentOrientations.Vertical;
 			chart1.ChartAreas["VolumeArea"].AlignmentStyle = AreaAlignmentStyles.All;
@@ -56,11 +71,12 @@
 			chart1.ChartAreas["VolumeArea"].AxisX.Minimum = day.ToOA(9, 30);
 			chart1.ChartAreas["VolumeArea"].AxisX.Maximum = day.ToOA(16, 10);
 
-			PopulateChart(day);
-		}
 
-		void PopulateChart(MarketGuess day)
-		{
+			foreach (Series series in chart1.Series)
+			{
+				series.Points.Clear();
+			}
+
 			Console.WriteLine(day.MarketDay.ToStringNice());
 
 			chart1.Series["LocalHL"].Points.Add(new DataPoint(day.ToOA(9, 30), new []{day.LocalHigh, day.LocalLow}));
@@ -155,6 +171,13 @@
 					}
 				}
 			}
+		}
+
+		private void button1_Click(object sender, EventArgs e)
+		{
+			MarketGuess day = GetMarketGuess(searchBox.Text, days);
+			PopulateChart(day);
+			chart1.Refresh();
 		}
 	}
 }
