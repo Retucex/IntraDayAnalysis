@@ -7,10 +7,10 @@
 	using System.Windows.Forms;
 	using System.Windows.Forms.DataVisualization.Charting;
 
-	public partial class Form1 : Form
+	public partial class MainCandleStick : Form
 	{
 		List<MarketGuess> days = MarketAnalysis.RunSimulation();
-		public Form1()
+		public MainCandleStick()
 		{
 			InitializeComponent();
 

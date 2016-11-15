@@ -5,7 +5,7 @@
 	using System.Windows.Forms;
 	using System.Windows.Forms.DataVisualization.Charting;
 
-	partial class Form1
+	partial class MainCandleStick
 	{
 		/// <summary>
 		/// Required designer variable.
