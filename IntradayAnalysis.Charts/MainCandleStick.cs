@@ -9,7 +9,7 @@
 
 	public partial class MainCandleStick : Form
 	{
-		List<MarketGuess> days = MarketAnalysis.RunSimulation();
+		public static List<MarketGuess> days = MarketAnalysis.RunSimulation();
 		public MainCandleStick()
 		{
 			InitializeComponent();
@@ -28,6 +28,9 @@
 			tooltip.AutomaticDelay = 10;
 
 			PopulateChart(day);
+
+			VolumeShortLong v = new VolumeShortLong();
+			v.Show();
 		}
 
 		static MarketGuess GetMarketGuess(string search, List<MarketGuess> days)
