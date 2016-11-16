@@ -13,19 +13,25 @@ namespace IntradayAnalysis.Charts
 {
 	public partial class VolumeShortLong : Form
 	{
-		public VolumeShortLong()
+		public VolumeShortLong(List<MarketGuess> guesses)
 		{
 			InitializeComponent();
 			int count = 0;
-			foreach (var marketGuess in MainCandleStick.days.GroupBy(x => x.FirstVolume.VolumeClass))
+			foreach (var marketGuess in guesses.GroupBy(x => x.BoundsMarketAction))
 			{
-				foreach (var guess in marketGuess.ToList().GroupBy(x => x.SecondVolume.VolumeClass))
+				foreach (MarketGuess guess in marketGuess)
 				{
-					foreach (var marketGuess1 in guess)
+					count++;
+					double longShort = 0;
+					if (guess.LongPoints.Count > guess.ShortPoints.Count)
 					{
-						chart1.Series["VolumeSerie"].Points.Add(new DataPoint(count, new[] { (double)marketGuess1.FirstVolume.Volume, (double)marketGuess1.SecondVolume.Volume }));
-						count++;
+						longShort = 1;
 					}
+					else
+					{
+						longShort = -1;
+					}
+					chart1.Series["VolumeSerie"].Points.Add(new DataPoint(count, new[] { (double)guess.SecondVolume.Volume, (double)guess.FirstVolume.Volume, longShort }));
 				}
 				
 			}
@@ -34,7 +40,16 @@ namespace IntradayAnalysis.Charts
 			{
 				if (point.YValues[0] < point.YValues[1])
 				{
-					point.Color = Color.Red;
+					point.Color = Color.DarkRed;
+				}
+
+				if (point.YValues[2] < 0)
+				{
+					point.MarkerColor = Color.Red;
+				}
+				if (point.YValues[2] > 0)
+				{
+					point.MarkerColor = Color.Green;
 				}
 			}
 		}

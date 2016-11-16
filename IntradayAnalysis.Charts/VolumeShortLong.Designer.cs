@@ -36,6 +36,18 @@
 			// 
 			// chart1
 			// 
+			chartArea1.AxisX.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
+			chartArea1.AxisX.MajorGrid.LineColor = System.Drawing.Color.DarkGray;
+			chartArea1.AxisX.MajorGrid.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.DashDotDot;
+			chartArea1.AxisX.MinorGrid.Enabled = true;
+			chartArea1.AxisX.MinorGrid.LineColor = System.Drawing.Color.Gainsboro;
+			chartArea1.AxisX.MinorGrid.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dot;
+			chartArea1.AxisY.IntervalAutoMode = System.Windows.Forms.DataVisualization.Charting.IntervalAutoMode.VariableCount;
+			chartArea1.AxisY.MajorGrid.LineColor = System.Drawing.Color.DarkGray;
+			chartArea1.AxisY.MajorGrid.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.DashDotDot;
+			chartArea1.AxisY.MinorGrid.Enabled = true;
+			chartArea1.AxisY.MinorGrid.LineColor = System.Drawing.Color.Gainsboro;
+			chartArea1.AxisY.MinorGrid.LineDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dot;
 			chartArea1.Name = "VolumeArea";
 			this.chart1.ChartAreas.Add(chartArea1);
 			this.chart1.Location = new System.Drawing.Point(0, 0);
@@ -43,20 +55,21 @@
 			this.chart1.Name = "chart1";
 			series1.ChartArea = "VolumeArea";
 			series1.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.RangeColumn;
+			series1.MarkerColor = System.Drawing.Color.Red;
+			series1.MarkerStyle = System.Windows.Forms.DataVisualization.Charting.MarkerStyle.Square;
 			series1.Name = "VolumeSerie";
-			series1.YValuesPerPoint = 2;
+			series1.YValuesPerPoint = 3;
 			this.chart1.Series.Add(series1);
-			this.chart1.Size = new System.Drawing.Size(2235, 1377);
+			this.chart1.Size = new System.Drawing.Size(1490, 895);
 			this.chart1.TabIndex = 0;
 			this.chart1.Text = "chart1";
 			// 
 			// VolumeShortLong
 			// 
-			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
+			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(2152, 1378);
+			this.ClientSize = new System.Drawing.Size(1492, 903);
 			this.Controls.Add(this.chart1);
-			this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.Name = "VolumeShortLong";
 			this.Text = "VolumeShortLong";
 			((System.ComponentModel.ISupportInitialize)(this.chart1)).EndInit();

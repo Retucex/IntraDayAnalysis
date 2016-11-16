@@ -29,8 +29,17 @@
 
 			PopulateChart(day);
 
-			VolumeShortLong v = new VolumeShortLong();
-			v.Show();
+			var firstGroup = days.GroupBy(x => x.FirstVolume.VolumeClass);
+			foreach (var iter in firstGroup)
+			{
+				var secondGroup = iter.GroupBy(x => x.SecondVolume.VolumeClass);
+				foreach (var iter2 in secondGroup)
+				{
+					VolumeShortLong v = new VolumeShortLong(iter2.OrderBy(x => x.FirstVolume.Volume).ThenBy(x => x.SecondVolume.Volume).ToList());
+					v.Text = $"{iter.Key}-{iter2.Key}";
+					v.Show();
+				}
+			}
 		}
 
 		static MarketGuess GetMarketGuess(string search, List<MarketGuess> days)
