@@ -3,9 +3,11 @@
 	using System;
 	using System.Collections.Generic;
 	using System.Drawing;
+	using System.IO;
 	using System.Linq;
 	using System.Windows.Forms;
 	using System.Windows.Forms.DataVisualization.Charting;
+	using Microsoft.VisualBasic;
 
 	public partial class Form1 : Form
 	{
@@ -17,18 +19,24 @@
 		private double ll;
 		private MarketDataPoint buyPoint = null;
 		private double profit = 0;
+		bool goingLong = false;
+
+
+		StreamWriter testLog = new StreamWriter($"Logs//{DateTimeFileName}-TrainingLog.txt");
+
+		static string DateTimeFileName
+			=>
+				$"{DateTime.Now.Year}{DateTime.Now.Month}{DateTime.Now.Day}-{DateTime.Now.Hour}{DateTime.Now.Minute}{DateTime.Now.Second.ToString("D2")}";
 
 		public Form1()
 		{
 			InitializeComponent();
+			testLog.AutoFlush = true;
 
 			day = GetMarketGuess("", days);
 
 			chart1.MouseMove += chart1_MouseMove;
 			tooltip.AutomaticDelay = 10;
-			chart1.Refresh();
-			PopulateChart(day);
-			chart1.Refresh();
 		}
 
 		static MarketGuess GetMarketGuess(string search, List<MarketGuess> days)
@@ -59,7 +67,7 @@
 				series.Points.Clear();
 			}
 
-			Console.WriteLine(day.MarketDay.ToStringNice());
+			//Console.WriteLine(day.MarketDay.ToStringNice());
 
 			//chart1.Series["LocalHL"].Points.Add(new DataPoint(day.ToOA(9, 30), new []{day.LocalHigh, day.LocalLow}));
 			//chart1.Series["LocalHL"].Points.Add(new DataPoint(day.ToOA(10, 30), new []{day.LocalHigh, day.LocalLow}));
@@ -103,8 +111,17 @@
 			}
 			volAvg /= count;
 
-			if(buyPoint != null)
-				profit = 1- buyPoint.Close/day.MarketDay.DataPoints[count - 1].Close;
+			if (buyPoint != null)
+			{
+				if (goingLong)
+				{
+					profit = 1 - (buyPoint.Close / day.MarketDay.DataPoints[count - 1].Close);
+				}
+				else
+				{
+					profit = (buyPoint.Close / day.MarketDay.DataPoints[count - 1].Close) - 1;
+				}
+			}
 
 
 			chart1.ChartAreas["VolumeArea"].AlignWithChartArea = "PriceArea";
@@ -121,7 +138,7 @@
 
 			chart1.ChartAreas["PriceArea"].AxisY.Minimum = ll;
 			chart1.ChartAreas["PriceArea"].AxisY.Maximum = lh;
-			chart1.ChartAreas["PriceArea"].AxisY2.Minimum = ll/lh;
+			chart1.ChartAreas["PriceArea"].AxisY2.Minimum = ll / lh;
 			chart1.ChartAreas["PriceArea"].AxisY2.Maximum = 1;
 			chart1.ChartAreas["PriceArea"].AxisX.Minimum = day.ToOA(9, 30);
 			chart1.ChartAreas["PriceArea"].AxisX.Maximum = day.ToOA(16, 10);
@@ -189,25 +206,67 @@
 		{
 			count = 1;
 			buyPoint = null;
+			profit = 0;
+
+			rakeInButton.Enabled = false;
+			goLongButton.Enabled = true;
+			shortButton.Enabled = true;
+			noTouchButton.Enabled = true;
+
 			day = GetMarketGuess("", days);
 			PopulateChart(day);
 		}
 
 		private void noTouchButton_Click(object sender, EventArgs e)
 		{
+			string comment = Interaction.InputBox("Comment");
 
+			testLog.WriteLine(day.ToString());
+			testLog.WriteLine($"Did not touch");
+			testLog.WriteLine($"Commment:{comment}");
+			testLog.WriteLine("----------------------------------------");
+
+			rakeInButton.Enabled = false;
+			goLongButton.Enabled = false;
+			shortButton.Enabled = false;
+			noTouchButton.Enabled = false;
+
+			count = day.MarketDay.DataPoints.Count;
+			PopulateChart(day);
 		}
 
 		private void rakeInButton_Click(object sender, EventArgs e)
 		{
+			string comment = Interaction.InputBox("Comment");
 
+			testLog.WriteLine(day.ToString());
+			testLog.WriteLine(goingLong ? "Went Long" : "Shorted");
+			testLog.WriteLine($"BuyPoint:{buyPoint.ToStringNice()}");
+			testLog.WriteLine($"SellPoint:{day.MarketDay.DataPoints[count - 1].ToStringNice()}");
+			testLog.WriteLine($"Profit:{profit}");
+			testLog.WriteLine($"Commment:{comment}");
+			testLog.WriteLine("----------------------------------------");
+
+			rakeInButton.Enabled = false;
+			goLongButton.Enabled = false;
+			shortButton.Enabled = false;
+			noTouchButton.Enabled = false;
+
+			count = day.MarketDay.DataPoints.Count;
+			PopulateChart(day);
 		}
 
 		private void goLongButton_Click(object sender, EventArgs e)
 		{
 			if (buyPoint == null)
 			{
+				rakeInButton.Enabled = true;
+				goLongButton.Enabled = false;
+				shortButton.Enabled = false;
+				noTouchButton.Enabled = false;
+
 				buyPoint = day.MarketDay.DataPoints[count - 1];
+				goingLong = true;
 				PopulateChart(day);
 			}
 		}
@@ -216,7 +275,13 @@
 		{
 			if (buyPoint == null)
 			{
+				rakeInButton.Enabled = true;
+				goLongButton.Enabled = false;
+				shortButton.Enabled = false;
+				noTouchButton.Enabled = false;
+
 				buyPoint = day.MarketDay.DataPoints[count - 1];
+				goingLong = false;
 				PopulateChart(day);
 			}
 		}
