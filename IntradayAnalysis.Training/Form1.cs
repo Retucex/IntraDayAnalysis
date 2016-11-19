@@ -12,15 +12,20 @@
 	public partial class Form1 : Form
 	{
 		public static List<MarketGuess> days = MarketAnalysis.RunSimulation();
-		private MarketGuess day;
-		private int count = 1;
-		private double volAvg = 0;
-		private double lh;
-		private double ll;
-		private MarketDataPoint buyPoint = null;
-		private double profit = 0;
+		MarketGuess day;
+		int count = 1;
+		double volAvg = 0;
+		double lh;
+		double ll;
+		MarketDataPoint buyPoint = null;
+		MarketDataPoint sellPoint = null;
+		double profit = 0;
 		bool goingLong = false;
 
+
+		//Session Stats
+		double totalProfit = 0;
+		int totalCount = 0;
 
 		StreamWriter testLog = new StreamWriter($"Logs//{DateTimeFileName}-TrainingLog.txt");
 
@@ -72,16 +77,21 @@
 			//chart1.Series["LocalHL"].Points.Add(new DataPoint(day.ToOA(9, 30), new []{day.LocalHigh, day.LocalLow}));
 			//chart1.Series["LocalHL"].Points.Add(new DataPoint(day.ToOA(10, 30), new []{day.LocalHigh, day.LocalLow}));
 
-			//chart1.Series["HighBound"].Points.Add(new DataPoint(day.ToOA(9, 30), day.HighBound));
-			//chart1.Series["HighBound"].Points.Add(new DataPoint(day.ToOA(10, 30), day.HighBound));
+			chart1.Series["HighBound"].Points.Add(new DataPoint(day.ToOA(9, 30), lh * 0.99));
+			chart1.Series["HighBound"].Points.Add(new DataPoint(day.ToOA(10, 30), lh * 0.99));
 
-			//chart1.Series["LowBound"].Points.Add(new DataPoint(day.ToOA(9, 30), day.LowBound));
-			//chart1.Series["LowBound"].Points.Add(new DataPoint(day.ToOA(10, 30), day.LowBound));
+			chart1.Series["LowBound"].Points.Add(new DataPoint(day.ToOA(9, 30), ll * 1.01));
+			chart1.Series["LowBound"].Points.Add(new DataPoint(day.ToOA(10, 30), ll * 1.01));
 
 			if (buyPoint != null)
 			{
 				chart1.Series["BuyPrice"].Points.Add(new DataPoint(buyPoint.DateTime.ToOADate(), buyPoint.Close));
 				chart1.Series["BuyPrice"].Points.Add(new DataPoint(day.ToOA(16, 30), buyPoint.Close));
+			}
+			if (sellPoint != null)
+			{
+				chart1.Series["SellPrice"].Points.Add(new DataPoint(sellPoint.DateTime.ToOADate(), sellPoint.Close));
+				chart1.Series["SellPrice"].Points.Add(new DataPoint(day.ToOA(16, 30), sellPoint.Close));
 			}
 
 			chart1.Series["GapLine"].Points.Add(new DataPoint(day.ToOA(9, 30), day.MarketDay.Open / day.MarketDay.Gap));
@@ -238,11 +248,12 @@
 		private void rakeInButton_Click(object sender, EventArgs e)
 		{
 			string comment = Interaction.InputBox("Comment");
+			sellPoint = day.MarketDay.DataPoints[count - 1];
 
 			testLog.WriteLine(day.ToString());
 			testLog.WriteLine(goingLong ? "Went Long" : "Shorted");
 			testLog.WriteLine($"BuyPoint:{buyPoint.ToStringNice()}");
-			testLog.WriteLine($"SellPoint:{day.MarketDay.DataPoints[count - 1].ToStringNice()}");
+			testLog.WriteLine($"SellPoint:{sellPoint.ToStringNice()}");
 			testLog.WriteLine($"Profit:{profit}");
 			testLog.WriteLine($"Commment:{comment}");
 			testLog.WriteLine("----------------------------------------");
@@ -251,6 +262,9 @@
 			goLongButton.Enabled = false;
 			shortButton.Enabled = false;
 			noTouchButton.Enabled = false;
+
+			totalProfit += profit;
+			totalCount++;
 
 			count = day.MarketDay.DataPoints.Count;
 			PopulateChart(day);
@@ -267,6 +281,7 @@
 
 				buyPoint = day.MarketDay.DataPoints[count - 1];
 				goingLong = true;
+
 				PopulateChart(day);
 			}
 		}
@@ -282,8 +297,18 @@
 
 				buyPoint = day.MarketDay.DataPoints[count - 1];
 				goingLong = false;
+			
 				PopulateChart(day);
 			}
+		}
+
+		private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			testLog.WriteLine();
+			testLog.WriteLine("------------");
+			testLog.WriteLine("Summary:");
+			testLog.WriteLine($"Profit:{totalProfit/totalCount}");
+			testLog.WriteLine($"Count:{totalCount}");
 		}
 	}
 }

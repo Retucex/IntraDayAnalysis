@@ -47,6 +47,7 @@
 			System.Windows.Forms.DataVisualization.Charting.Series series8 = new System.Windows.Forms.DataVisualization.Charting.Series();
 			System.Windows.Forms.DataVisualization.Charting.Series series9 = new System.Windows.Forms.DataVisualization.Charting.Series();
 			System.Windows.Forms.DataVisualization.Charting.Series series10 = new System.Windows.Forms.DataVisualization.Charting.Series();
+			System.Windows.Forms.DataVisualization.Charting.Series series11 = new System.Windows.Forms.DataVisualization.Charting.Series();
 			System.Windows.Forms.DataVisualization.Charting.Title title1 = new System.Windows.Forms.DataVisualization.Charting.Title();
 			this.chart1 = new System.Windows.Forms.DataVisualization.Charting.Chart();
 			this.goLongButton = new System.Windows.Forms.Button();
@@ -181,6 +182,10 @@
 			series10.Color = System.Drawing.Color.Red;
 			series10.Name = "ProfitMargin";
 			series10.YValuesPerPoint = 2;
+			series11.ChartArea = "PriceArea";
+			series11.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
+			series11.Color = System.Drawing.Color.Lime;
+			series11.Name = "SellPrice";
 			this.chart1.Series.Add(series1);
 			this.chart1.Series.Add(series2);
 			this.chart1.Series.Add(series3);
@@ -191,6 +196,7 @@
 			this.chart1.Series.Add(series8);
 			this.chart1.Series.Add(series9);
 			this.chart1.Series.Add(series10);
+			this.chart1.Series.Add(series11);
 			this.chart1.Size = new System.Drawing.Size(1443, 920);
 			this.chart1.TabIndex = 0;
 			title1.Alignment = System.Drawing.ContentAlignment.TopCenter;
@@ -245,7 +251,7 @@
 			// newButton
 			// 
 			this.newButton.Location = new System.Drawing.Point(1369, 12);
-			this.newButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.newButton.Margin = new System.Windows.Forms.Padding(2);
 			this.newButton.Name = "newButton";
 			this.newButton.Size = new System.Drawing.Size(50, 19);
 			this.newButton.TabIndex = 5;
@@ -256,7 +262,7 @@
 			// noTouchButton
 			// 
 			this.noTouchButton.Location = new System.Drawing.Point(173, 12);
-			this.noTouchButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.noTouchButton.Margin = new System.Windows.Forms.Padding(2);
 			this.noTouchButton.Name = "noTouchButton";
 			this.noTouchButton.Size = new System.Drawing.Size(70, 23);
 			this.noTouchButton.TabIndex = 6;
@@ -283,7 +289,7 @@
 			this.Text = "Chart";
 			((System.ComponentModel.ISupportInitialize)(this.chart1)).EndInit();
 			this.ResumeLayout(false);
-
+			this.FormClosing += new FormClosingEventHandler(this.Form1_FormClosing);
 		}
 
 		#endregion
